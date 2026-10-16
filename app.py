@@ -327,7 +327,7 @@ else:
                 elements = []
                 styles = getSampleStyleSheet()
                 elements.append(Paragraph(f"<b>Obyekt: {p_name}</b>", styles['Title']))
-                elements.append(Paragraph("<b>Prorab: Abdulla</b>", styles['Subtitle']))
+                elements.append(Paragraph("<b>Prorab: Abdulla</b>", styles['Normal']))
                 elements.append(Spacer(1, 12))
                 
                 w_data = get_data("SELECT job_name, unit, quantity, price_per_unit, total_price FROM works WHERE project_id = ?", (active_project_id,))
