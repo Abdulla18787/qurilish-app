@@ -18,7 +18,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Baza yaratish
+# Baza yaratish (Uy egasi va ustalar smetalari alohida jadvalda)
 def init_db():
     conn = sqlite3.connect("construction_pro.db")
     c = conn.cursor()
@@ -33,7 +33,9 @@ def init_db():
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     project_name TEXT
                 )''')
-    c.execute('''CREATE TABLE IF NOT EXISTS works (
+    
+    # 1. Uy egasi smetasi jadvali
+    c.execute('''CREATE TABLE IF NOT EXISTS owner_works (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     project_id INTEGER,
                     job_name TEXT,
@@ -42,6 +44,19 @@ def init_db():
                     price_per_unit REAL,
                     total_price REAL
                 )''')
+                
+    # 2. Ustalar smetasi jadvali
+    c.execute('''CREATE TABLE IF NOT EXISTS worker_works (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    project_id INTEGER,
+                    job_name TEXT,
+                    unit TEXT,
+                    quantity REAL,
+                    price_per_unit REAL,
+                    total_price REAL
+                )''')
+
+    # Uy egasi to'lovlari
     c.execute('''CREATE TABLE IF NOT EXISTS owner_payments (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     project_id INTEGER,
@@ -49,6 +64,8 @@ def init_db():
                     amount REAL,
                     note TEXT
                 )''')
+                
+    # Ustalar to'lovlari
     c.execute('''CREATE TABLE IF NOT EXISTS worker_payments (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     project_id INTEGER,
@@ -57,6 +74,7 @@ def init_db():
                     amount REAL,
                     note TEXT
                 )''')
+
     c.execute("SELECT * FROM users WHERE username = 'abdulla'")
     if not c.fetchone():
         c.execute("INSERT INTO users (username, password, role, project_id) VALUES ('abdulla', '1234', 'admin', NULL)")
@@ -138,7 +156,6 @@ else:
                     st.success("Yangi uy qo'shildi!")
                     st.rerun()
 
-        # Uylar ro'yxati va tanlash
         projects_list = get_data("SELECT * FROM projects")
         
         if not projects_list.empty:
@@ -156,7 +173,6 @@ else:
             st.title(f"🏠 Tanlangan uy: {selected_proj_name}")
             st.caption("Prorab Abdulla boshqaruv paneli")
             
-            # Action buttonlar (Panel tanlash)
             col_b1, col_b2, col_b3 = st.columns(3)
             with col_b1:
                 if st.button("🏠 Uy egasi uchun login/parol yaratish"):
@@ -170,7 +186,7 @@ else:
 
             st.markdown("---")
 
-            # 1-REJIM: Uy egasiga login/parol yaratish
+            # 1. Uy egasiga login/parol yaratish
             if st.session_state['prorab_action'] == 'owner_user':
                 st.subheader(f"🔑 '{selected_proj_name}' uchun UY EGASI login-parolini yaratish")
                 with st.form("add_owner_cred"):
@@ -185,7 +201,7 @@ else:
                             except:
                                 st.error("Bu login allaqachon mavjud, boshqa login kiriting!")
 
-            # 2-REJIM: Ustaga login/parol yaratish
+            # 2. Ustaga login/parol yaratish
             elif st.session_state['prorab_action'] == 'worker_user':
                 st.subheader(f"🔑 '{selected_proj_name}' uchun USTA login-parolini yaratish")
                 with st.form("add_worker_cred"):
@@ -200,42 +216,75 @@ else:
                             except:
                                 st.error("Bu login allaqachon mavjud, boshqa login kiriting!")
 
-            # 3-REJIM: Obyekt hisobini ochish (Smeta)
+            # 3. Smeta va Hisoblar
             elif st.session_state['prorab_action'] == 'show_project':
                 t1, t2, t3, t4 = st.tabs(["📊 Smeta (Ishlar)", "💰 Uy Egasidan Olingan Pullar", "👷 Ustalarga Berilgan Pullar", "📄 PDF Hisobot"])
                 
-                # 1. Smeta
+                # --- TAB 1: SMETA (ALOHIDA AJRATILGAN) ---
                 with t1:
-                    st.subheader("Bosh Smeta")
-                    with st.expander("➕ Yangi ish qo'shish"):
-                        with st.form("w_form"):
-                            jn = st.text_input("Ish nomi (Masalan: G'isht terish)")
-                            un = st.selectbox("Birlik", ["kv.m", "kub.m", "metr", "dona", "komplekt"])
-                            qty = st.number_input("Hajmi", min_value=0.0, step=0.1)
-                            pr = st.number_input("1 Birlik narxi", min_value=0.0, step=1000.0)
-                            if st.form_submit_button("Qo'shish") and jn:
-                                execute_query("INSERT INTO works (project_id, job_name, unit, quantity, price_per_unit, total_price) VALUES (?, ?, ?, ?, ?, ?)", (active_project_id, jn, un, qty, pr, qty*pr))
-                                st.rerun()
+                    st.subheader("Bosh Smeta Boshqaruvi")
                     
-                    raw_w = get_data("SELECT id, job_name, unit, quantity, price_per_unit, total_price FROM works WHERE project_id = ?", (active_project_id,))
-                    if not raw_w.empty:
-                        display_w = raw_w[['job_name', 'unit', 'quantity', 'price_per_unit', 'total_price']].copy()
-                        display_w.columns = ["Ish nomi", "O'lchov birligi", "Hajmi", "1 Birlik narxi", "Jami qiymati"]
-                        display_w.index = range(1, len(display_w) + 1)
-                        st.dataframe(display_w, use_container_width=True)
+                    smeta_type = st.radio("Qaysi smetaga ish qo'shmoqchisiz?", ["🏠 Uy Egasi Smetasi", "👷 Ustalar Smetasi"], horizontal=True)
+                    
+                    if smeta_type == "🏠 Uy Egasi Smetasi":
+                        st.markdown("#### 🏠 Uy Egasi Smetasiga ish qo'shish")
+                        with st.expander("➕ Uy egasi uchun yangi ish qo'shish"):
+                            with st.form("ow_form"):
+                                jn = st.text_input("Ish nomi (Masalan: G'isht terish)")
+                                un = st.selectbox("Birlik", ["kv.m", "kub.m", "metr", "dona", "komplekt"])
+                                qty = st.number_input("Hajmi", min_value=0.0, step=0.1)
+                                pr = st.number_input("Uy egasiga 1 Birlik narxi", min_value=0.0, step=1000.0)
+                                if st.form_submit_button("Uy egasi smetasiga qo'shish") and jn:
+                                    execute_query("INSERT INTO owner_works (project_id, job_name, unit, quantity, price_per_unit, total_price) VALUES (?, ?, ?, ?, ?, ?)", (active_project_id, jn, un, qty, pr, qty*pr))
+                                    st.rerun()
                         
-                        with st.expander("🗑️ Qatorni o'chirish"):
-                            row_to_del = st.number_input("O'chirmoqchi bo'lgan qator raqamini kiriting (1, 2, 3...):", min_value=1, max_value=len(raw_w), step=1)
-                            if st.button("Ishni o'chirish"):
-                                target_db_id = raw_w.iloc[row_to_del - 1]['id']
-                                execute_query("DELETE FROM works WHERE id = ?", (target_db_id,))
-                                st.success("O'chirildi!")
-                                st.rerun()
-                        st.metric("Obyektning umumiy qiymati:", f"{raw_w['total_price'].sum():,.2f}")
-                    else:
-                        st.info("Hozircha smetaga ishlar kiritilmagan.")
+                        raw_ow = get_data("SELECT id, job_name, unit, quantity, price_per_unit, total_price FROM owner_works WHERE project_id = ?", (active_project_id,))
+                        if not raw_ow.empty:
+                            disp_ow = raw_ow[['job_name', 'unit', 'quantity', 'price_per_unit', 'total_price']].copy()
+                            disp_ow.columns = ["Ish nomi", "O'lchov birligi", "Hajmi", "1 Birlik narxi", "Jami qiymati"]
+                            disp_ow.index = range(1, len(disp_ow) + 1)
+                            st.dataframe(disp_ow, use_container_width=True)
+                            
+                            with st.expander("🗑️ Uy egasi smetasidan qatorni o'chirish"):
+                                r_del = st.number_input("O'chiriladigan qator raqami (1, 2, 3...):", min_value=1, max_value=len(raw_ow), step=1, key="ow_del")
+                                if st.button("Ishni o'chirish", key="ow_del_btn"):
+                                    t_id = raw_ow.iloc[r_del - 1]['id']
+                                    execute_query("DELETE FROM owner_works WHERE id = ?", (t_id,))
+                                    st.rerun()
+                            st.metric("Uy egasining umumiy smeta qiymati:", f"{raw_ow['total_price'].sum():,.2f}")
+                        else:
+                            st.info("Uy egasi smetasiga hali ishlar kiritilmagan.")
 
-                # 2. Uy Egasi Pullari
+                    else:
+                        st.markdown("#### 👷 Ustalar Smetasiga ish qo'shish")
+                        with st.expander("➕ Usta uchun yangi ish qo'shish"):
+                            with st.form("ww_form"):
+                                jn = st.text_input("Ish nomi (Masalan: G'isht terish)")
+                                un = st.selectbox("Birlik", ["kv.m", "kub.m", "metr", "dona", "komplekt"])
+                                qty = st.number_input("Hajmi", min_value=0.0, step=0.1)
+                                pr = st.number_input("Ustaga 1 Birlik narxi (Ish haqi)", min_value=0.0, step=1000.0)
+                                if st.form_submit_button("Ustalar smetasiga qo'shish") and jn:
+                                    execute_query("INSERT INTO worker_works (project_id, job_name, unit, quantity, price_per_unit, total_price) VALUES (?, ?, ?, ?, ?, ?)", (active_project_id, jn, un, qty, pr, qty*pr))
+                                    st.rerun()
+                        
+                        raw_ww = get_data("SELECT id, job_name, unit, quantity, price_per_unit, total_price FROM worker_works WHERE project_id = ?", (active_project_id,))
+                        if not raw_ww.empty:
+                            disp_ww = raw_ww[['job_name', 'unit', 'quantity', 'price_per_unit', 'total_price']].copy()
+                            disp_ww.columns = ["Ish nomi", "O'lchov birligi", "Hajmi", "1 Birlik narxi (Ish haqi)", "Jami qiymati"]
+                            disp_ww.index = range(1, len(disp_ww) + 1)
+                            st.dataframe(disp_ww, use_container_width=True)
+                            
+                            with st.expander("🗑️ Ustalar smetasidan qatorni o'chirish"):
+                                r_del = st.number_input("O'chiriladigan qator raqami (1, 2, 3...):", min_value=1, max_value=len(raw_ww), step=1, key="ww_del")
+                                if st.button("Ishni o'chirish", key="ww_del_btn"):
+                                    t_id = raw_ww.iloc[r_del - 1]['id']
+                                    execute_query("DELETE FROM worker_works WHERE id = ?", (t_id,))
+                                    st.rerun()
+                            st.metric("Ustalarning umumiy smeta qiymati:", f"{raw_ww['total_price'].sum():,.2f}")
+                        else:
+                            st.info("Ustalar smetasiga hali ishlar kiritilmagan.")
+
+                # --- TAB 2: UY EGASI PULLARI ---
                 with t2:
                     st.subheader("Uy Egasidan Olingan Pullar")
                     with st.expander("➕ Pul olishni yozish"):
@@ -259,13 +308,12 @@ else:
                             if st.button("To'lovni o'chirish"):
                                 target_op_id = raw_op.iloc[op_row_del - 1]['id']
                                 execute_query("DELETE FROM owner_payments WHERE id = ?", (target_op_id,))
-                                st.success("O'chirildi!")
                                 st.rerun()
                         st.metric("Uy egasidan olingan jami pul:", f"{raw_op['amount'].sum():,.2f}")
                     else:
                         st.info("To'lovlar kiritilmagan.")
 
-                # 3. Ustalar Pullari
+                # --- TAB 3: USTALAR PULLARI ---
                 with t3:
                     st.subheader("Ustalarga Berilgan Ish Haqlari")
                     with st.expander("➕ Ustaga pul berish"):
@@ -290,13 +338,12 @@ else:
                             if st.button("Ustaning to'lovini o'chirish"):
                                 target_wp_id = raw_wp.iloc[wp_row_del - 1]['id']
                                 execute_query("DELETE FROM worker_payments WHERE id = ?", (target_wp_id,))
-                                st.success("O'chirildi!")
                                 st.rerun()
                         st.metric("Ustalarga berilgan jami pul:", f"{raw_wp['amount'].sum():,.2f}")
                     else:
                         st.info("Ustalar to'lovi kiritilmagan.")
 
-                # 4. PDF
+                # --- TAB 4: PDF ---
                 with t4:
                     st.subheader("PDF Hisobot Yaratish")
                     def generate_pdf():
@@ -308,7 +355,7 @@ else:
                         elements.append(Paragraph("<b>Prorab: Abdulla</b>", styles['Normal']))
                         elements.append(Spacer(1, 12))
                         
-                        w_data = get_data("SELECT job_name, unit, quantity, price_per_unit, total_price FROM works WHERE project_id = ?", (active_project_id,))
+                        w_data = get_data("SELECT job_name, unit, quantity, price_per_unit, total_price FROM owner_works WHERE project_id = ?", (active_project_id,))
                         if not w_data.empty:
                             data = [["Ish nomi", "Birlik", "Hajm", "Narx", "Jami"]]
                             for _, r in w_data.iterrows():
@@ -319,9 +366,8 @@ else:
                         doc.build(elements)
                         buffer.seek(0)
                         return buffer
-                    st.download_button("📥 PDF Hisobotni Yuklab Olish", generate_pdf(), file_name=f"{selected_proj_name}_hisobot.pdf", mime="application/pdf")
+                    st.download_button("📥 Uy Egasi uchun PDF Hisobotni Yuklab Olish", generate_pdf(), file_name=f"{selected_proj_name}_hisobot.pdf", mime="application/pdf")
 
-            # Ro'yxatdagi foydalanuvchilar
             with st.expander("👥 Ushbu uyga biriktirilgan Login/Parollar ro'yxati"):
                 u_list = get_data("SELECT id, username AS 'Login', password AS 'Parol', role AS 'Rol' FROM users WHERE project_id = ?", (active_project_id,))
                 if not u_list.empty:
@@ -339,7 +385,7 @@ else:
             st.warning("Hali hech qanday uy qo'shilmagan! Chap menyudan uy qo'shing.")
 
     # ---------------------------------------------------------
-    # B) UY EGASI OYNASI
+    # B) UY EGASI OYNASI (Faqat Uy Egasi Smetasini Ko'radi)
     # ---------------------------------------------------------
     elif role == 'uy_egasi':
         active_project_id = user['project_id']
@@ -353,7 +399,7 @@ else:
         
         with t1:
             st.subheader("Bajarilayotgan Ishlar va Narxlar")
-            raw_w = get_data("SELECT job_name, unit, quantity, price_per_unit, total_price FROM works WHERE project_id = ?", (active_project_id,))
+            raw_w = get_data("SELECT job_name, unit, quantity, price_per_unit, total_price FROM owner_works WHERE project_id = ?", (active_project_id,))
             if not raw_w.empty:
                 raw_w.columns = ["Ish nomi", "O'lchov birligi", "Hajmi", "1 Birlik narxi", "Jami qiymati"]
                 raw_w.index = range(1, len(raw_w) + 1)
@@ -370,7 +416,7 @@ else:
                 raw_op.index = range(1, len(raw_op) + 1)
                 st.dataframe(raw_op, use_container_width=True)
                 given = raw_op['Berilgan summa'].sum()
-                w_df_all = get_data("SELECT total_price FROM works WHERE project_id = ?", (active_project_id,))
+                w_df_all = get_data("SELECT total_price FROM owner_works WHERE project_id = ?", (active_project_id,))
                 tot = w_df_all['total_price'].sum() if not w_df_all.empty else 0
                 col1, col2 = st.columns(2)
                 col1.metric("Siz bergan jami pul:", f"{given:,.2f}")
@@ -379,7 +425,7 @@ else:
                 st.info("To'lovlar tarixi yo'q.")
 
     # ---------------------------------------------------------
-    # C) USTA OYNASI
+    # C) USTA OYNASI (Faqat Ustalar Smetasini Ko'radi)
     # ---------------------------------------------------------
     elif role == 'usta':
         active_project_id = user['project_id']
@@ -387,19 +433,20 @@ else:
         p_name = proj_info.iloc[0]['project_name'] if not proj_info.empty else "Ob'ekt"
         
         st.title(f"👷 {p_name} — Usta Paneli")
-        st.info("Xush kelibsiz! Bu yerda ob'ektdagi ish hajmlari va sizga berilgan ish haqi ko'rsatilgan.")
+        st.info("Xush kelibsiz! Bu yerda ob'ektdagi sizning ish hajmlaringiz va sizga berilgan ish haqi ko'rsatilgan.")
         
-        t1, t2 = st.tabs(["📋 Bajariladigan Ishlar Hajmi", "💵 Olingan Ish Haqlari Tarixi"])
+        t1, t2 = st.tabs(["📋 Bajariladigan Ishlar va Narxlar", "💵 Olingan Ish Haqlari Tarixi"])
         
         with t1:
-            st.subheader("Ob'ektdagi Ishlar Hajmi ($m^2, m^3, m$)")
-            raw_w = get_data("SELECT job_name, unit, quantity FROM works WHERE project_id = ?", (active_project_id,))
+            st.subheader("Ob'ektdagi Ishlar va Ish Haqlari")
+            raw_w = get_data("SELECT job_name, unit, quantity, price_per_unit, total_price FROM worker_works WHERE project_id = ?", (active_project_id,))
             if not raw_w.empty:
-                raw_w.columns = ["Ish nomi", "O'lchov birligi", "Hajmi"]
+                raw_w.columns = ["Ish nomi", "O'lchov birligi", "Hajmi", "1 Birlik narxi (Ish haqi)", "Jami qiymati"]
                 raw_w.index = range(1, len(raw_w) + 1)
                 st.dataframe(raw_w, use_container_width=True)
+                st.metric("Sizning umumiy ish haqigingiz qiymati:", f"{raw_w['Jami qiymati'].sum():,.2f}")
             else:
-                st.info("Hozircha ishlar ro'yxati yo'q.")
+                st.info("Hozircha siz uchun ishlar ro'yxati kiritilmagan.")
                 
         with t2:
             st.subheader("Sizga Berilgan Ish Haqlari Tarixi")
