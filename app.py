@@ -64,7 +64,7 @@ role = st.sidebar.radio("Rolingizni tanlang:", ["Uy egasi / Usta (Faqat ko'rish)
 is_admin = False
 if role == "Prorab (Tahrirlash)":
     password = st.sidebar.text_input("Prorab parolini kiriting:", type="password")
-    if password == "1234":  # Parolni o'zingiz xohlaganday o'zgartiring
+    if password == "Ab0534443":  # Parolni o'zingiz xohlaganday o'zgartiring
         st.sidebar.success("Xush kelibsiz, Prorab!")
         is_admin = True
     else:
