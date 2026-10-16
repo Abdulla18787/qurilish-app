@@ -14,6 +14,7 @@ st.markdown("""
     <style>
     .login-header { text-align: center; color: #1E88E5; font-weight: bold; }
     .footer-brand { text-align: center; margin-top: 30px; font-size: 16px; color: #757575; font-weight: bold; }
+    .stButton>button { width: 100%; border-radius: 8px; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -81,6 +82,8 @@ if 'logged_in' not in st.session_state:
     st.session_state['logged_in'] = False
 if 'user_info' not in st.session_state:
     st.session_state['user_info'] = None
+if 'prorab_action' not in st.session_state:
+    st.session_state['prorab_action'] = None
 
 # =========================================================
 # 1. LOGIN INTERFEYSI
@@ -116,188 +119,221 @@ else:
     if st.sidebar.button("🚪 Tizimdan chiqish"):
         st.session_state['logged_in'] = False
         st.session_state['user_info'] = None
+        st.session_state['prorab_action'] = None
         st.rerun()
     st.sidebar.markdown("---")
 
     # ---------------------------------------------------------
-    # A) PRORAB ABDULLA NOGOROHI
+    # A) PRORAB ABDULLA PANELI
     # ---------------------------------------------------------
     if role == 'admin':
-        st.sidebar.subheader("⚙️ Prorab Boshqaruvi")
+        st.sidebar.subheader("⚙️ Uylarni boshqarish")
         
-        # 1. Uy qo'shish / o'chirish
-        with st.sidebar.expander("🏠 Uylar ro'yxati"):
-            new_p_name = st.text_input("Yangi uy nomi:")
+        # 1. Yangi uy qo'shish
+        with st.sidebar.expander("➕ Yangi uy qo'shish"):
+            new_p_name = st.text_input("Yangi uy nomi (Masalan: Yunusobod uyi):")
             if st.button("Uy qo'shish"):
                 if new_p_name:
                     execute_query("INSERT INTO projects (project_name) VALUES (?)", (new_p_name,))
-                    st.success("Uy qo'shildi!")
-                    st.rerun()
-            projects_list = get_data("SELECT * FROM projects")
-            if not projects_list.empty:
-                del_p_id = st.selectbox("O'chirmoqchi bo'lgan uyni tanlang:", projects_list['id'].tolist(), format_func=lambda x: projects_list[projects_list['id']==x]['project_name'].values[0])
-                if st.button("Uyni o'chirish 🗑️"):
-                    execute_query("DELETE FROM projects WHERE id = ?", (del_p_id,))
-                    execute_query("DELETE FROM users WHERE project_id = ?", (del_p_id,))
+                    st.success("Yangi uy qo'shildi!")
                     st.rerun()
 
-        # 2. Login/Parol berish
-        with st.sidebar.expander("🔑 Uy egasi va Usta uchun Login/Parol"):
-            projects_list = get_data("SELECT * FROM projects")
-            if not projects_list.empty:
-                u_type = st.selectbox("Kim uchun login ochasiz?", ["uy_egasi", "usta"])
-                u_project = st.selectbox("Qaysi uyga biriktirasiz?", projects_list['id'].tolist(), format_func=lambda x: projects_list[projects_list['id']==x]['project_name'].values[0])
-                u_login = st.text_input("Login yaratish:")
-                u_pass = st.text_input("Parol yaratish:")
-                if st.button("Saqlash va Berish"):
-                    if u_login and u_pass:
-                        try:
-                            execute_query("INSERT INTO users (username, password, role, project_id) VALUES (?, ?, ?, ?)", (u_login, u_pass, u_type, u_project))
-                            st.success("Muvaffaqiyatli saqlandi!")
-                            st.rerun()
-                        except:
-                            st.error("Bu login allaqachon bor!")
-
-        # 3. Foydalanuvchilar ro'yxati
-        with st.sidebar.expander("👥 Berilgan Login/Parollar"):
-            users_df = get_data("SELECT id, username AS 'Login', password AS 'Parol', role AS 'Rol' FROM users WHERE role != 'admin'")
-            users_df.index = range(1, len(users_df) + 1)
-            st.dataframe(users_df, use_container_width=True)
-            if not users_df.empty:
-                del_user_id = st.number_input("O'chiriladigan User ID:", min_value=1, step=1)
-                if st.button("O'chirish"):
-                    execute_query("DELETE FROM users WHERE id = ?", (del_user_id,))
-                    st.rerun()
-
-        # Prorab uchun Obyektni tanlash
-        all_projects = get_data("SELECT * FROM projects")
-        if not all_projects.empty:
-            proj_dict = {row['project_name']: row['id'] for _, row in all_projects.iterrows()}
-            selected_proj_name = st.selectbox("📂 Qaysi uyni tekshirasiz/yozasiz?", list(proj_dict.keys()))
+        # Uylar ro'yxati va tanlash
+        projects_list = get_data("SELECT * FROM projects")
+        
+        if not projects_list.empty:
+            proj_dict = {row['project_name']: row['id'] for _, row in projects_list.iterrows()}
+            selected_proj_name = st.sidebar.selectbox("📂 Ishlamoqchi bo'lgan uyni tanlang:", list(proj_dict.keys()))
             active_project_id = proj_dict[selected_proj_name]
             
-            p_name = selected_proj_name
-            st.title(f"🏠 Obyekt: {p_name}")
+            with st.sidebar.expander("🗑️ Uyni o'chirish"):
+                if st.button("Tanlangan uyni o'chirish"):
+                    execute_query("DELETE FROM projects WHERE id = ?", (active_project_id,))
+                    execute_query("DELETE FROM users WHERE project_id = ?", (active_project_id,))
+                    st.success("Uy o'chirildi!")
+                    st.rerun()
+
+            st.title(f"🏠 Tanlangan uy: {selected_proj_name}")
             st.caption("Prorab Abdulla boshqaruv paneli")
-
-            t1, t2, t3, t4 = st.tabs(["📊 Smeta (Ishlar)", "💰 Uy Egasidan Olingan Pullar", "👷 Ustalarga Berilgan Pullar", "📄 PDF Hisobot"])
             
-            # 1. Smeta
-            with t1:
-                st.subheader("Bosh Smeta")
-                with st.expander("➕ Yangi ish qo'shish"):
-                    with st.form("w_form"):
-                        jn = st.text_input("Ish nomi (Masalan: G'isht terish)")
-                        un = st.selectbox("Birlik", ["kv.m", "kub.m", "metr", "dona", "komplekt"])
-                        qty = st.number_input("Hajmi", min_value=0.0, step=0.1)
-                        pr = st.number_input("1 Birlik narxi", min_value=0.0, step=1000.0)
-                        if st.form_submit_button("Qo'shish") and jn:
-                            execute_query("INSERT INTO works (project_id, job_name, unit, quantity, price_per_unit, total_price) VALUES (?, ?, ?, ?, ?, ?)", (active_project_id, jn, un, qty, pr, qty*pr))
-                            st.rerun()
-                
-                raw_w = get_data("SELECT id, job_name, unit, quantity, price_per_unit, total_price FROM works WHERE project_id = ?", (active_project_id,))
-                if not raw_w.empty:
-                    display_w = raw_w[['job_name', 'unit', 'quantity', 'price_per_unit', 'total_price']].copy()
-                    display_w.columns = ["Ish nomi", "O'lchov birligi", "Hajmi", "1 Birlik narxi", "Jami qiymati"]
-                    display_w.index = range(1, len(display_w) + 1)
-                    st.dataframe(display_w, use_container_width=True)
-                    
-                    with st.expander("🗑️ Qatorni o'chirish"):
-                        row_to_del = st.number_input("O'chirmoqchi bo'lgan qator raqamini kiriting (1, 2, 3...):", min_value=1, max_value=len(raw_w), step=1)
-                        if st.button("Ishni o'chirish"):
-                            target_db_id = raw_w.iloc[row_to_del - 1]['id']
-                            execute_query("DELETE FROM works WHERE id = ?", (target_db_id,))
-                            st.success("O'chirildi!")
-                            st.rerun()
-                    st.metric("Obyektning umumiy qiymati:", f"{raw_w['total_price'].sum():,.2f}")
-                else:
-                    st.info("Hozircha smetaga ishlar kiritilmagan.")
+            # Action buttonlar (Panel tanlash)
+            col_b1, col_b2, col_b3 = st.columns(3)
+            with col_b1:
+                if st.button("🏠 Uy egasi uchun login/parol yaratish"):
+                    st.session_state['prorab_action'] = 'owner_user'
+            with col_b2:
+                if st.button("👷 Usta uchun login/parol yaratish"):
+                    st.session_state['prorab_action'] = 'worker_user'
+            with col_b3:
+                if st.button("📊 Obyekt smetasi va hisobini ochish"):
+                    st.session_state['prorab_action'] = 'show_project'
 
-            # 2. Uy Egasi Pullari
-            with t2:
-                st.subheader("Uy Egasidan Olingan Pullar")
-                with st.expander("➕ Pul olishni yozish"):
-                    with st.form("op_form"):
-                        dt = st.date_input("Sana")
-                        am = st.number_input("Olingan summa", min_value=0.0, step=10000.0)
-                        nt = st.text_input("Izoh")
-                        if st.form_submit_button("Saqlash") and am > 0:
-                            execute_query("INSERT INTO owner_payments (project_id, date, amount, note) VALUES (?, ?, ?, ?)", (active_project_id, str(dt), am, nt))
-                            st.rerun()
-                
-                raw_op = get_data("SELECT id, date, amount, note FROM owner_payments WHERE project_id = ?", (active_project_id,))
-                if not raw_op.empty:
-                    display_op = raw_op[['date', 'amount', 'note']].copy()
-                    display_op.columns = ["Sana", "Olingan summa", "Izoh"]
-                    display_op.index = range(1, len(display_op) + 1)
-                    st.dataframe(display_op, use_container_width=True)
-                    
-                    with st.expander("🗑️ To'lovni o'chirish"):
-                        op_row_del = st.number_input("O'chiriladigan to'lov qatori raqami (1, 2, 3...):", min_value=1, max_value=len(raw_op), step=1, key="op_del_k")
-                        if st.button("To'lovni o'chirish"):
-                            target_op_id = raw_op.iloc[op_row_del - 1]['id']
-                            execute_query("DELETE FROM owner_payments WHERE id = ?", (target_op_id,))
-                            st.success("O'chirildi!")
-                            st.rerun()
-                    st.metric("Uy egasidan olingan jami pul:", f"{raw_op['amount'].sum():,.2f}")
-                else:
-                    st.info("To'lovlar kiritilmagan.")
+            st.markdown("---")
 
-            # 3. Ustalar Pullari
-            with t3:
-                st.subheader("Ustalarga Berilgan Ish Haqlari")
-                with st.expander("➕ Ustaga pul berish"):
-                    with st.form("wp_form"):
-                        wn = st.text_input("Usta / Brigada nomi")
-                        dt = st.date_input("Sana")
-                        am = st.number_input("Berilgan summa", min_value=0.0, step=5000.0)
-                        nt = st.text_input("Izoh")
-                        if st.form_submit_button("Saqlash") and am > 0:
-                            execute_query("INSERT INTO worker_payments (project_id, worker_name, date, amount, note) VALUES (?, ?, ?, ?, ?)", (active_project_id, wn, str(dt), am, nt))
-                            st.rerun()
-                
-                raw_wp = get_data("SELECT id, worker_name, date, amount, note FROM worker_payments WHERE project_id = ?", (active_project_id,))
-                if not raw_wp.empty:
-                    display_wp = raw_wp[['worker_name', 'date', 'amount', 'note']].copy()
-                    display_wp.columns = ["Usta nomi", "Sana", "Berilgan summa", "Izoh"]
-                    display_wp.index = range(1, len(display_wp) + 1)
-                    st.dataframe(display_wp, use_container_width=True)
-                    
-                    with st.expander("🗑️ Ustaning to'lovini o'chirish"):
-                        wp_row_del = st.number_input("O'chiriladigan qator raqami (1, 2, 3...):", min_value=1, max_value=len(raw_wp), step=1, key="wp_del_k")
-                        if st.button("Ustaning to'lovini o'chirish"):
-                            target_wp_id = raw_wp.iloc[wp_row_del - 1]['id']
-                            execute_query("DELETE FROM worker_payments WHERE id = ?", (target_wp_id,))
-                            st.success("O'chirildi!")
-                            st.rerun()
-                    st.metric("Ustalarga berilgan jami pul:", f"{raw_wp['amount'].sum():,.2f}")
-                else:
-                    st.info("Ustalar to'lovi kiritilmagan.")
+            # 1-REJIM: Uy egasiga login/parol yaratish
+            if st.session_state['prorab_action'] == 'owner_user':
+                st.subheader(f"🔑 '{selected_proj_name}' uchun UY EGASI login-parolini yaratish")
+                with st.form("add_owner_cred"):
+                    u_login = st.text_input("Uy egasi uchun Login:")
+                    u_pass = st.text_input("Uy egasi uchun Parol:", type="password")
+                    if st.form_submit_button("Saqlash va Login Berish"):
+                        if u_login and u_pass:
+                            try:
+                                execute_query("INSERT INTO users (username, password, role, project_id) VALUES (?, ?, 'uy_egasi', ?)", 
+                                              (u_login, u_pass, active_project_id))
+                                st.success("Uy egasiga login va parol berildi!")
+                            except:
+                                st.error("Bu login allaqachon mavjud, boshqa login kiriting!")
 
-            # 4. PDF
-            with t4:
-                st.subheader("PDF Hisobot Yaratish")
-                def generate_pdf():
-                    buffer = io.BytesIO()
-                    doc = SimpleDocTemplate(buffer, pagesize=A4)
-                    elements = []
-                    styles = getSampleStyleSheet()
-                    elements.append(Paragraph(f"<b>Obyekt Hisoboti: {p_name}</b>", styles['Title']))
-                    elements.append(Paragraph("<b>Prorab: Abdulla</b>", styles['Normal']))
-                    elements.append(Spacer(1, 12))
+            # 2-REJIM: Ustaga login/parol yaratish
+            elif st.session_state['prorab_action'] == 'worker_user':
+                st.subheader(f"🔑 '{selected_proj_name}' uchun USTA login-parolini yaratish")
+                with st.form("add_worker_cred"):
+                    u_login = st.text_input("Usta uchun Login:")
+                    u_pass = st.text_input("Usta uchun Parol:", type="password")
+                    if st.form_submit_button("Saqlash va Login Berish"):
+                        if u_login and u_pass:
+                            try:
+                                execute_query("INSERT INTO users (username, password, role, project_id) VALUES (?, ?, 'usta', ?)", 
+                                              (u_login, u_pass, active_project_id))
+                                st.success("Ustaga login va parol berildi!")
+                            except:
+                                st.error("Bu login allaqachon mavjud, boshqa login kiriting!")
+
+            # 3-REJIM: Obyekt hisobini ochish (Smeta)
+            elif st.session_state['prorab_action'] == 'show_project':
+                t1, t2, t3, t4 = st.tabs(["📊 Smeta (Ishlar)", "💰 Uy Egasidan Olingan Pullar", "👷 Ustalarga Berilgan Pullar", "📄 PDF Hisobot"])
+                
+                # 1. Smeta
+                with t1:
+                    st.subheader("Bosh Smeta")
+                    with st.expander("➕ Yangi ish qo'shish"):
+                        with st.form("w_form"):
+                            jn = st.text_input("Ish nomi (Masalan: G'isht terish)")
+                            un = st.selectbox("Birlik", ["kv.m", "kub.m", "metr", "dona", "komplekt"])
+                            qty = st.number_input("Hajmi", min_value=0.0, step=0.1)
+                            pr = st.number_input("1 Birlik narxi", min_value=0.0, step=1000.0)
+                            if st.form_submit_button("Qo'shish") and jn:
+                                execute_query("INSERT INTO works (project_id, job_name, unit, quantity, price_per_unit, total_price) VALUES (?, ?, ?, ?, ?, ?)", (active_project_id, jn, un, qty, pr, qty*pr))
+                                st.rerun()
                     
-                    w_data = get_data("SELECT job_name, unit, quantity, price_per_unit, total_price FROM works WHERE project_id = ?", (active_project_id,))
-                    if not w_data.empty:
-                        data = [["Ish nomi", "Birlik", "Hajm", "Narx", "Jami"]]
-                        for _, r in w_data.iterrows():
-                            data.append([str(r['job_name']), str(r['unit']), str(r['quantity']), str(r['price_per_unit']), str(r['total_price'])])
-                        t = Table(data)
-                        t.setStyle(TableStyle([('BACKGROUND', (0,0), (-1,0), colors.grey), ('GRID', (0,0), (-1,-1), 1, colors.black)]))
-                        elements.append(t)
-                    doc.build(elements)
-                    buffer.seek(0)
-                    return buffer
-                st.download_button("📥 PDF Hisobotni Yuklab Olish", generate_pdf(), file_name=f"{p_name}_hisobot.pdf", mime="application/pdf")
+                    raw_w = get_data("SELECT id, job_name, unit, quantity, price_per_unit, total_price FROM works WHERE project_id = ?", (active_project_id,))
+                    if not raw_w.empty:
+                        display_w = raw_w[['job_name', 'unit', 'quantity', 'price_per_unit', 'total_price']].copy()
+                        display_w.columns = ["Ish nomi", "O'lchov birligi", "Hajmi", "1 Birlik narxi", "Jami qiymati"]
+                        display_w.index = range(1, len(display_w) + 1)
+                        st.dataframe(display_w, use_container_width=True)
+                        
+                        with st.expander("🗑️ Qatorni o'chirish"):
+                            row_to_del = st.number_input("O'chirmoqchi bo'lgan qator raqamini kiriting (1, 2, 3...):", min_value=1, max_value=len(raw_w), step=1)
+                            if st.button("Ishni o'chirish"):
+                                target_db_id = raw_w.iloc[row_to_del - 1]['id']
+                                execute_query("DELETE FROM works WHERE id = ?", (target_db_id,))
+                                st.success("O'chirildi!")
+                                st.rerun()
+                        st.metric("Obyektning umumiy qiymati:", f"{raw_w['total_price'].sum():,.2f}")
+                    else:
+                        st.info("Hozircha smetaga ishlar kiritilmagan.")
+
+                # 2. Uy Egasi Pullari
+                with t2:
+                    st.subheader("Uy Egasidan Olingan Pullar")
+                    with st.expander("➕ Pul olishni yozish"):
+                        with st.form("op_form"):
+                            dt = st.date_input("Sana")
+                            am = st.number_input("Olingan summa", min_value=0.0, step=10000.0)
+                            nt = st.text_input("Izoh")
+                            if st.form_submit_button("Saqlash") and am > 0:
+                                execute_query("INSERT INTO owner_payments (project_id, date, amount, note) VALUES (?, ?, ?, ?)", (active_project_id, str(dt), am, nt))
+                                st.rerun()
+                    
+                    raw_op = get_data("SELECT id, date, amount, note FROM owner_payments WHERE project_id = ?", (active_project_id,))
+                    if not raw_op.empty:
+                        display_op = raw_op[['date', 'amount', 'note']].copy()
+                        display_op.columns = ["Sana", "Olingan summa", "Izoh"]
+                        display_op.index = range(1, len(display_op) + 1)
+                        st.dataframe(display_op, use_container_width=True)
+                        
+                        with st.expander("🗑️ To'lovni o'chirish"):
+                            op_row_del = st.number_input("O'chiriladigan to'lov qatori raqami (1, 2, 3...):", min_value=1, max_value=len(raw_op), step=1, key="op_del_k")
+                            if st.button("To'lovni o'chirish"):
+                                target_op_id = raw_op.iloc[op_row_del - 1]['id']
+                                execute_query("DELETE FROM owner_payments WHERE id = ?", (target_op_id,))
+                                st.success("O'chirildi!")
+                                st.rerun()
+                        st.metric("Uy egasidan olingan jami pul:", f"{raw_op['amount'].sum():,.2f}")
+                    else:
+                        st.info("To'lovlar kiritilmagan.")
+
+                # 3. Ustalar Pullari
+                with t3:
+                    st.subheader("Ustalarga Berilgan Ish Haqlari")
+                    with st.expander("➕ Ustaga pul berish"):
+                        with st.form("wp_form"):
+                            wn = st.text_input("Usta / Brigada nomi")
+                            dt = st.date_input("Sana")
+                            am = st.number_input("Berilgan summa", min_value=0.0, step=5000.0)
+                            nt = st.text_input("Izoh")
+                            if st.form_submit_button("Saqlash") and am > 0:
+                                execute_query("INSERT INTO worker_payments (project_id, worker_name, date, amount, note) VALUES (?, ?, ?, ?, ?)", (active_project_id, wn, str(dt), am, nt))
+                                st.rerun()
+                    
+                    raw_wp = get_data("SELECT id, worker_name, date, amount, note FROM worker_payments WHERE project_id = ?", (active_project_id,))
+                    if not raw_wp.empty:
+                        display_wp = raw_wp[['worker_name', 'date', 'amount', 'note']].copy()
+                        display_wp.columns = ["Usta nomi", "Sana", "Berilgan summa", "Izoh"]
+                        display_wp.index = range(1, len(display_wp) + 1)
+                        st.dataframe(display_wp, use_container_width=True)
+                        
+                        with st.expander("🗑️ Ustaning to'lovini o'chirish"):
+                            wp_row_del = st.number_input("O'chiriladigan qator raqami (1, 2, 3...):", min_value=1, max_value=len(raw_wp), step=1, key="wp_del_k")
+                            if st.button("Ustaning to'lovini o'chirish"):
+                                target_wp_id = raw_wp.iloc[wp_row_del - 1]['id']
+                                execute_query("DELETE FROM worker_payments WHERE id = ?", (target_wp_id,))
+                                st.success("O'chirildi!")
+                                st.rerun()
+                        st.metric("Ustalarga berilgan jami pul:", f"{raw_wp['amount'].sum():,.2f}")
+                    else:
+                        st.info("Ustalar to'lovi kiritilmagan.")
+
+                # 4. PDF
+                with t4:
+                    st.subheader("PDF Hisobot Yaratish")
+                    def generate_pdf():
+                        buffer = io.BytesIO()
+                        doc = SimpleDocTemplate(buffer, pagesize=A4)
+                        elements = []
+                        styles = getSampleStyleSheet()
+                        elements.append(Paragraph(f"<b>Obyekt Hisoboti: {selected_proj_name}</b>", styles['Title']))
+                        elements.append(Paragraph("<b>Prorab: Abdulla</b>", styles['Normal']))
+                        elements.append(Spacer(1, 12))
+                        
+                        w_data = get_data("SELECT job_name, unit, quantity, price_per_unit, total_price FROM works WHERE project_id = ?", (active_project_id,))
+                        if not w_data.empty:
+                            data = [["Ish nomi", "Birlik", "Hajm", "Narx", "Jami"]]
+                            for _, r in w_data.iterrows():
+                                data.append([str(r['job_name']), str(r['unit']), str(r['quantity']), str(r['price_per_unit']), str(r['total_price'])])
+                            t = Table(data)
+                            t.setStyle(TableStyle([('BACKGROUND', (0,0), (-1,0), colors.grey), ('GRID', (0,0), (-1,-1), 1, colors.black)]))
+                            elements.append(t)
+                        doc.build(elements)
+                        buffer.seek(0)
+                        return buffer
+                    st.download_button("📥 PDF Hisobotni Yuklab Olish", generate_pdf(), file_name=f"{selected_proj_name}_hisobot.pdf", mime="application/pdf")
+
+            # Ro'yxatdagi foydalanuvchilar
+            with st.expander("👥 Ushbu uyga biriktirilgan Login/Parollar ro'yxati"):
+                u_list = get_data("SELECT id, username AS 'Login', password AS 'Parol', role AS 'Rol' FROM users WHERE project_id = ?", (active_project_id,))
+                if not u_list.empty:
+                    u_list.index = range(1, len(u_list) + 1)
+                    st.dataframe(u_list, use_container_width=True)
+                    del_u_id = st.number_input("O'chiriladigan User ID si:", min_value=1, step=1)
+                    if st.button("Foydalanuvchini o'chirish"):
+                        execute_query("DELETE FROM users WHERE id = ?", (del_u_id,))
+                        st.success("O'chirildi!")
+                        st.rerun()
+                else:
+                    st.info("Hozircha uy egasi yoki ustaga login berilmagan.")
 
         else:
             st.warning("Hali hech qanday uy qo'shilmagan! Chap menyudan uy qo'shing.")
