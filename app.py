@@ -3,18 +3,18 @@ import pandas as pd
 import sqlite3
 from reportlab.lib.pagesizes import A4
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib import colors
 import io
 
-# Page Configuration
+# Sahifa sozlamalari
 st.set_page_config(page_title="Qurilish Smeta & Nazorat Tizimi", layout="wide")
 
-# Database Setup
+# Ma'lumotlar bazasini sozlash (SQLite)
 def init_db():
     conn = sqlite3.connect("construction.db")
     c = conn.cursor()
-    # Works table
+    # Ishlar jadvali (Smeta)
     c.execute('''CREATE TABLE IF NOT EXISTS works (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     job_name TEXT,
@@ -23,14 +23,14 @@ def init_db():
                     price_per_unit REAL,
                     total_price REAL
                 )''')
-    # Payments from Owner
+    # Uy egasidan olingan to'lovlar
     c.execute('''CREATE TABLE IF NOT EXISTS owner_payments (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     date TEXT,
                     amount REAL,
                     note TEXT
                 )''')
-    # Payments to Workers
+    # Ustalarga berilgan to'lovlar
     c.execute('''CREATE TABLE IF NOT EXISTS worker_payments (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     worker_name TEXT,
@@ -43,7 +43,7 @@ def init_db():
 
 init_db()
 
-# DB Functions
+# Baza bilan ishlash funksiyalari
 def get_data(table):
     conn = sqlite3.connect("construction.db")
     df = pd.read_sql_query(f"SELECT * FROM {table}", conn)
@@ -57,25 +57,31 @@ def execute_query(query, params=()):
     conn.commit()
     conn.close()
 
-# Sidebar Authentication
+# Yon panel (Sidebar) - Tizimga kirish
 st.sidebar.title("🔑 Tizimga kirish")
 role = st.sidebar.radio("Rolingizni tanlang:", ["Uy egasi / Usta (Faqat ko'rish)", "Prorab (Tahrirlash)"])
 
 is_admin = False
 if role == "Prorab (Tahrirlash)":
     password = st.sidebar.text_input("Prorab parolini kiriting:", type="password")
-    if password == "Ab0534443":  # Parolni o'zingiz xohlaganday o'zgartiring
+    
+    # 📌 PAROLNI SHU YERDAN O'ZGARTIRISHINGIZ MUMKIN (Hozirgi parol: 1234)
+    PRORAB_PAROL = "1234" 
+    
+    if password == PRORAB_PAROL:
         st.sidebar.success("Xush kelibsiz, Prorab!")
         is_admin = True
     else:
         st.sidebar.error("Parol noto'g'ri!")
 
-st.title("🏗️ " "Noldan Topshirishgacha" " Qurilish Ob'ekti Hisobi")
+st.title("🏗️ Noldan Topshirishgacha Qurilish Ob'ekti Hisobi")
 
-# Tabs
+# Tablar (Bo'limlar)
 tab1, tab2, tab3, tab4 = st.tabs(["📊 Bosh Smeta (Ishlar)", "💰 Uy Egasining To'lovlari", "👷 Ustalar Hisobi", "📄 PDF Hisobot"])
 
+# ---------------------------------------------------------
 # TAB 1: SMETA
+# ---------------------------------------------------------
 with tab1:
     st.header("1. Ish Hajmlari va Qiymati (Smeta)")
     
@@ -98,12 +104,24 @@ with tab1:
     df_works = get_data("works")
     if not df_works.empty:
         st.dataframe(df_works, use_container_width=True)
+        
+        # O'chirish bo'limi (Prorab uchun)
+        if is_admin:
+            with st.expander("🗑️ Qatorni o'chirish"):
+                work_id_to_delete = st.number_input("O'chirmoqchi bo'lgan ish ID raqamini kiriting:", min_value=1, step=1, key="del_work")
+                if st.button("Ushbu ishni o'chirish"):
+                    execute_query("DELETE FROM works WHERE id = ?", (work_id_to_delete,))
+                    st.success(f"ID: {work_id_to_delete} bo'lgan ish o'chirildi!")
+                    st.rerun()
+
         total_project_cost = df_works["total_price"].sum()
-        st.metric(label="<b>Umumiy Qurilish Qiymati:</b>", value=f"{total_project_cost:,.2f}")
+        st.metric(label="Umumiy Qurilish Qiymati:", value=f"{total_project_cost:,.2f}")
     else:
         st.info("Hozircha smetaga ishlar kiritilmagan.")
 
+# ---------------------------------------------------------
 # TAB 2: UY EGASI TO'LOVLARI
+# ---------------------------------------------------------
 with tab2:
     st.header("2. Uy Egasidan Olingan Pullar")
     
@@ -124,18 +142,30 @@ with tab2:
     df_owner = get_data("owner_payments")
     if not df_owner.empty:
         st.dataframe(df_owner, use_container_width=True)
+        
+        # O'chirish bo'limi (Prorab uchun)
+        if is_admin:
+            with st.expander("🗑️ To'lovni o'chirish"):
+                owner_pay_id = st.number_input("O'chirmoqchi bo'lgan to'lov ID raqamini kiriting:", min_value=1, step=1, key="del_owner")
+                if st.button("To'lovni o'chirish"):
+                    execute_query("DELETE FROM owner_payments WHERE id = ?", (owner_pay_id,))
+                    st.success(f"ID: {owner_pay_id} bo'lgan to'lov o'chirildi!")
+                    st.rerun()
+
         total_given = df_owner["amount"].sum()
         df_works = get_data("works")
         total_cost = df_works["total_price"].sum() if not df_works.empty else 0
         rem_balance = total_cost - total_given
         
         col1, col2 = st.columns(2)
-        col1.metric("Uy egasi bergan toplam pul:", f"{total_given:,.2f}")
+        col1.metric("Uy egasi bergan jami pul:", f"{total_given:,.2f}")
         col2.metric("Qolgan qarzdorlik:", f"{rem_balance:,.2f}")
     else:
         st.info("To'lovlar tarixi mavjud emas.")
 
+# ---------------------------------------------------------
 # TAB 3: USTALAR HISOBI
+# ---------------------------------------------------------
 with tab3:
     st.header("3. Ustalar va Ularga Berilgan Pullar")
     
@@ -143,7 +173,7 @@ with tab3:
         with st.expander("➕ Ustaga pul berishni qayd etish"):
             with st.form("add_worker_pay"):
                 w_name = st.text_input("Usta ismi (Masalan: Ali usta - Suvoqchi)")
-                w_date = st.date_input("Sana ")
+                w_date = st.date_input("Sana")
                 w_amount = st.number_input("Berilgan summa", min_value=0.0, step=5000.0)
                 w_note = st.text_input("Izoh")
                 submit_wp = st.form_submit_button("Saqlash")
@@ -157,11 +187,23 @@ with tab3:
     df_worker = get_data("worker_payments")
     if not df_worker.empty:
         st.dataframe(df_worker, use_container_width=True)
-        st.metric("Ustolarga berilgan toplam pul:", f"{df_worker['amount'].sum():,.2f}")
+        
+        # O'chirish bo'limi (Prorab uchun)
+        if is_admin:
+            with st.expander("🗑️ Ustaning to'lovini o'chirish"):
+                worker_pay_id = st.number_input("O'chirmoqchi bo'lgan to'lov ID raqamini kiriting:", min_value=1, step=1, key="del_worker")
+                if st.button("Ustaning to'lovini o'chirish"):
+                    execute_query("DELETE FROM worker_payments WHERE id = ?", (worker_pay_id,))
+                    st.success(f"ID: {worker_pay_id} bo'lgan to'lov o'chirildi!")
+                    st.rerun()
+
+        st.metric("Ustalarga berilgan jami pul:", f"{df_worker['amount'].sum():,.2f}")
     else:
         st.info("Ustalar to'lovlari tarixi hozircha yo'q.")
 
+# ---------------------------------------------------------
 # TAB 4: PDF EXPORT
+# ---------------------------------------------------------
 with tab4:
     st.header("4. PDF Hisobot Yaratish")
     
@@ -175,7 +217,7 @@ with tab4:
         elements.append(title)
         elements.append(Spacer(1, 12))
         
-        # Table data
+        # Smeta jadvali
         works = get_data("works")
         if not works.empty:
             data = [["Ish nomi", "Birlik", "Hajm", "Narx", "Jami"]]
