@@ -15,7 +15,7 @@ from reportlab.lib import colors
 DB_PATH = "construction_clean.db"
 
 st.set_page_config(
-    page_title="Qurilish PRO | Prorab Abdulla",
+    page_title="Qurilish SMETA | Prorab Abdulla",
     page_icon="🏗️",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -318,8 +318,8 @@ def generate_custom_pdf(project_name, project_id, is_owner=True):
     signatures = [
         [Paragraph("<b>Prorab:</b> Abdulla", normal),
          Paragraph("<b>Buyurtmachi / usta:</b>", normal)],
-        [Paragraph("Imzo: ______________________", normal),
-         Paragraph("Imzo: ______________________", normal)],
+        [Paragraph("Imzo: ________________", normal),
+         Paragraph("Imzo: ________________", normal)],
         [Paragraph(f"Sana: {datetime.datetime.now():%d.%m.%Y}", normal),
          Paragraph(f"Sana: {datetime.datetime.now():%d.%m.%Y}", normal)]
     ]
@@ -362,14 +362,14 @@ if not st.session_state.logged_in:
                     st.rerun()
                 else:
                     st.error("Login yoki parol noto'g'ri.")
-        st.markdown("<div class='footer-brand'>👷 Prorab Abdulla · Qurilish PRO</div>", unsafe_allow_html=True)
+        st.markdown("<div class='footer-brand'>👷 Prorab Abdulla · Qurilish Smeta</div>", unsafe_allow_html=True)
 
 
 # -------------------- APPLICATION --------------------
 else:
     user = st.session_state.user_info
     role = user["role"]
-    st.sidebar.markdown("## 🏗️ QURILISH PRO")
+    st.sidebar.markdown("## 🏗️ QURILISH SMETA")
     st.sidebar.caption("OBYEKTLARNI BOSHQARISH")
     st.sidebar.markdown("---")
     st.sidebar.markdown(f"### 👤 {str(user['username']).capitalize()}")
