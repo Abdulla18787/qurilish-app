@@ -10,42 +10,33 @@ import io
 # Sahifa sozlamalari
 st.set_page_config(page_title="Qurilish Boshqaruvi | Prorab Abdulla", layout="wide", initial_sidebar_state="collapsed")
 
-# 🎨 Zamonaviy va Chiroyli CSS Dizayn
+# 🎨 Toza va Zamonaviy CSS dizayn
 st.markdown("""
     <style>
-    /* Asosiy fon va shriftlar */
-    .main {
-        background-color: #f8f9fa;
-    }
-    /* Login oynasi uchun card dizayni */
-    .login-container {
-        background: #ffffff;
-        padding: 40px;
-        border-radius: 15px;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-        max-width: 450px;
-        margin: 50px auto;
-    }
-    .login-title {
-        text-align: center;
+    .main-header {
+        font-size: 26px;
+        font-weight: 700;
         color: #1a73e8;
-        font-weight: 800;
-        margin-bottom: 25px;
+        margin-bottom: 10px;
+    }
+    .card {
+        background-color: #ffffff;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        margin-bottom: 20px;
     }
     .footer-brand {
         text-align: center;
-        margin-top: 40px;
+        margin-top: 50px;
         font-size: 15px;
-        color: #5f6368;
+        color: #6c757d;
         font-weight: 600;
-        letter-spacing: 1px;
     }
-    /* Tugmalar dizayni */
     .stButton>button {
         width: 100%;
-        border-radius: 8px;
+        border-radius: 6px;
         font-weight: 600;
-        height: 45px;
         background-color: #1a73e8;
         color: white;
     }
@@ -56,9 +47,9 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Ma'lumotlar bazasini yaratish
+# Ma'lumotlar bazasi
 def init_db():
-    conn = sqlite3.connect("construction_v2.db")
+    conn = sqlite3.connect("construction_clean.db")
     c = conn.cursor()
     c.execute('''CREATE TABLE IF NOT EXISTS users (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -105,7 +96,7 @@ def init_db():
                     note TEXT
                 )''')
     
-    # Prorab Abdulla boshlang'ich hisobi
+    # Prorab Abdulla hisobi
     c.execute("SELECT * FROM users WHERE username = 'abdulla'")
     if not c.fetchone():
         c.execute("INSERT INTO users (username, password, role, project_id) VALUES ('abdulla', '1234', 'admin', NULL)")
@@ -115,13 +106,13 @@ def init_db():
 init_db()
 
 def get_data(query, params=()):
-    conn = sqlite3.connect("construction_v2.db")
+    conn = sqlite3.connect("construction_clean.db")
     df = pd.read_sql_query(query, conn, params=params)
     conn.close()
     return df
 
 def execute_query(query, params=()):
-    conn = sqlite3.connect("construction_v2.db")
+    conn = sqlite3.connect("construction_clean.db")
     c = conn.cursor()
     c.execute(query, params)
     conn.commit()
@@ -133,40 +124,31 @@ if 'user_info' not in st.session_state:
     st.session_state['user_info'] = None
 
 # =========================================================
-# 1. ZAMONAVIY LOGIN SAHIFASI
+# 1. LOGIN SAHIFASI
 # =========================================================
 if not st.session_state['logged_in']:
     st.markdown("<br><br>", unsafe_allow_html=True)
-    col1, col2, col3 = st.columns([1, 1.2, 1])
-    
-    with col2:
-        st.markdown("""
-            <div class='login-container'>
-                <h2 class='login-title'>🏗️ Qurilish Nazorati</h2>
-            </div>
-        """, unsafe_allow_html=True)
-        
-        # Asosiy login formasi
+    c1, c2, c3 = st.columns([1, 1.2, 1])
+    with c2:
+        st.markdown("<h2 style='text-align: center; color: #1a73e8;'>🏗️ Qurilish Boshqaruvi</h2>", unsafe_allow_html=True)
+        st.markdown("<br>", unsafe_allow_html=True)
         with st.form("login_form"):
             st.markdown("### 🔐 Tizimga kirish")
-            input_user = st.text_input("Foydalanuvchi nomi (Login)")
-            input_pass = st.text_input("Maxfiy parol", type="password")
+            u_name = st.text_input("Login")
+            u_pass = st.text_input("Parol", type="password")
             st.markdown("<br>", unsafe_allow_html=True)
-            btn = st.form_submit_button("Tizimga kirish 🚀")
-            
-            if btn:
-                user_data = get_data("SELECT * FROM users WHERE username = ? AND password = ?", (input_user, input_pass))
-                if not user_data.empty:
+            if st.form_submit_button("Kirish 🚀"):
+                res = get_data("SELECT * FROM users WHERE username = ? AND password = ?", (u_name, u_pass))
+                if not res.empty:
                     st.session_state['logged_in'] = True
-                    st.session_state['user_info'] = user_data.iloc[0].to_dict()
+                    st.session_state['user_info'] = res.iloc[0].to_dict()
                     st.rerun()
                 else:
-                    st.error("❌ Login yoki parol xato kiritildi!")
-                    
-        st.markdown("<div class='footer-brand'>👷‍♂️ Prorab: Abdulla — Boshqaruv Tizimi</div>", unsafe_allow_html=True)
+                    st.error("❌ Login yoki parol xato!")
+        st.markdown("<div class='footer-brand'>👷‍♂️ Prorab: Abdulla</div>", unsafe_allow_html=True)
 
 # =========================================================
-# 2. TIZIM ICHKI QISMI (ROLE BO'YICHA)
+# 2. TIZIM ICHKI QISMI
 # =========================================================
 else:
     user = st.session_state['user_info']
@@ -181,181 +163,209 @@ else:
     st.sidebar.markdown("---")
 
     # ---------------------------------------------------------
-    # A) PRORAB ABDULLA UCHUN BOSHQARUV PANELI
+    # A) PRORAB ABDULLA UCHUN
     # ---------------------------------------------------------
     if role == 'admin':
-        st.sidebar.subheader("⚙️ Prorab Paneli")
+        st.markdown("<div class='main-header'>⚙️ Prorab Abdulla — Boshqaruv Markazi</div>", unsafe_allow_html=True)
         
-        with st.sidebar.expander("➕ Yangi uy qo'shish"):
-            new_house = st.text_input("Uy nomi (Masalan: 1-uy - Alisher aka):")
-            if st.button("Uyni bazaga qo'shish"):
-                if new_house:
-                    execute_query("INSERT INTO projects (project_name) VALUES (?)", (new_house,))
-                    st.success("Uy qo'shildi!")
+        # Uy qo'shish va tanlash qismi
+        col_h1, col_h2 = st.columns([2, 1])
+        with col_h1:
+            projects = get_data("SELECT * FROM projects")
+            if not projects.empty:
+                p_dict = {row['project_name']: row['id'] for _, row in projects.iterrows()}
+                sel_p = st.selectbox("📂 Ishlamoqchi bo'lgan uyni tanlang:", list(p_dict.keys()))
+                active_pid = p_dict[sel_p]
+            else:
+                active_pid = None
+                st.warning("Hali uylar qo'shilmagan. O'ng tomondan uy qo'shing.")
+        with col_h2:
+            with st.form("add_house_form", clear_on_submit=True):
+                h_name = st.text_input("Yangi uy nomi:")
+                if st.form_submit_button("➕ Uy qo'shish") and h_name:
+                    execute_query("INSERT INTO projects (project_name) VALUES (?)", (h_name,))
+                    st.success("Qo'shildi!")
                     st.rerun()
 
-        projects = get_data("SELECT * FROM projects")
-        
-        if not projects.empty:
-            proj_dict = {row['project_name']: row['id'] for _, row in projects.iterrows()}
-            selected_p = st.sidebar.selectbox("🏠 Qaysi uyni boshqarasiz?", list(proj_dict.keys()))
-            active_p_id = proj_dict[selected_p]
-            
-            with st.sidebar.expander("🗑️ Uyni o'chirish"):
-                if st.button("Tanlangan uyni o'chirish"):
-                    execute_query("DELETE FROM projects WHERE id = ?", (active_p_id,))
-                    execute_query("DELETE FROM users WHERE project_id = ?", (active_p_id,))
-                    st.success("O'chirildi!")
-                    st.rerun()
-
-            st.title(f"🏠 Tanlangan Obyekt: {selected_p}")
-            st.caption("Prorab Abdulla — Barcha hisob-kitoblar markazi")
-            
-            # Asosiy bo'limlar (Tablar)
-            tab1, tab2, tab3, tab4, tab5 = st.tabs([
-                "📊 Uy Egasi Smetasi", 
+        if active_pid:
+            st.markdown("---")
+            # Asosiy menyu (Tablar)
+            t1, t2, t3, t4, t5, t6 = st.tabs([
+                "🏠 Uy Egasi Smetasi", 
                 "👷 Ustalar Smetasi", 
                 "💰 Uy Egasi Pullari", 
                 "💵 Ustalar Ish Haqlari", 
+                "🔑 Login Berish",
                 "📄 PDF Hisobot"
             ])
             
-            # 1. Uy egasi smetasi
-            with tab1:
-                st.subheader("🏠 Uy Egasi Smetasi (Narxlar va Hajm)")
-                with st.expander("➕ Yangi ish va narx qo'shish"):
-                    with st.form("ow_add"):
-                        jn = st.text_input("Ish nomi (Masalan: Suvoq)")
-                        un = st.selectbox("O'lchov birligi", ["kv.m", "kub.m", "metr", "dona", "komplekt"])
-                        qt = st.number_input("Hajmi", min_value=0.0, step=0.1)
-                        pr = st.number_input("Uy egasiga 1 birlik narxi", min_value=0.0, step=1000.0)
-                        if st.form_submit_button("Qo'shish") and jn:
-                            execute_query("INSERT INTO owner_works (project_id, job_name, unit, quantity, price_per_unit, total_price) VALUES (?, ?, ?, ?, ?, ?)",
-                                          (active_p_id, jn, un, qt, pr, qt*pr))
-                            st.rerun()
+            # 1. Uy Egasi Smetasi
+            with t1:
+                st.markdown("### 🏠 Uy Egasi Smetasi")
+                with st.form("pr_ow", clear_on_submit=True):
+                    c1, c2, c3, c4 = st.columns(4)
+                    jn = c1.text_input("Ish nomi")
+                    un = c2.selectbox("Birlik", ["kv.m", "kub.m", "metr", "dona", "komplekt"])
+                    qt = c3.number_input("Hajmi", min_value=0.0, step=0.1)
+                    pr = c4.number_input("1 Birlik narxi", min_value=0.0, step=1000.0)
+                    if st.form_submit_button("Qo'shish") and jn:
+                        execute_query("INSERT INTO owner_works (project_id, job_name, unit, quantity, price_per_unit, total_price) VALUES (?, ?, ?, ?, ?, ?)",
+                                      (active_pid, jn, un, qt, pr, qt*pr))
+                        st.rerun()
                 
-                df_ow = get_data("SELECT id, job_name, unit, quantity, price_per_unit, total_price FROM owner_works WHERE project_id = ?", (active_p_id,))
-                if not df_ow.empty:
-                    d_view = df_ow[['job_name', 'unit', 'quantity', 'price_per_unit', 'total_price']].copy()
-                    d_view.columns = ["Ish nomi", "Birlik", "Hajmi", "1 Birlik narxi", "Jami qiymat"]
-                    d_view.index = range(1, len(d_view) + 1)
-                    st.dataframe(d_view, use_container_width=True)
+                df = get_data("SELECT id, job_name, unit, quantity, price_per_unit, total_price FROM owner_works WHERE project_id = ?", (active_pid,))
+                if not df.empty:
+                    v_df = df[['job_name', 'unit', 'quantity', 'price_per_unit', 'total_price']].copy()
+                    v_df.columns = ["Ish nomi", "Birlik", "Hajmi", "1 Birlik narxi", "Jami qiymat"]
+                    v_df.index = range(1, len(v_df) + 1)
+                    st.dataframe(v_df, use_container_width=True)
                     
-                    with st.expander("🗑️ Qatorni o'chirish"):
-                        r_num = st.number_input("O'chiriladigan qator raqami:", min_value=1, max_value=len(df_ow), step=1, key="del_ow_pr")
-                        if st.button("O'chirish", key="btn_del_ow"):
-                            t_id = df_ow.iloc[r_num - 1]['id']
-                            execute_query("DELETE FROM owner_works WHERE id = ?", (t_id,))
-                            st.rerun()
-                    st.metric("Uy egasi smetasining umumiy qiymati:", f"{df_ow['total_price'].sum():,.2f}")
+                    del_r = st.number_input("O'chiriladigan qator raqami:", min_value=1, max_value=len(df), step=1, key="dow")
+                    if st.button("Qatorni o'chirish", key="bou"):
+                        execute_query("DELETE FROM owner_works WHERE id = ?", (df.iloc[del_r - 1]['id'],))
+                        st.rerun()
+                    st.metric("Uy egasi smetasining jami qiymati:", f"{df['total_price'].sum():,.2f}")
                 else:
-                    st.info("Hozircha ma'lumot yo'q.")
+                    st.info("Hozircha ma'lumot kiritilmagan.")
 
-            # 2. Ustalar smetasi
-            with tab2:
-                st.subheader("👷 Ustalar Smetasi (Ish Haqi va Hajm)")
-                with st.expander("➕ Usta uchun ish qo'shish"):
-                    with st.form("ww_add"):
-                        jn = st.text_input("Ish nomi")
-                        un = st.selectbox("Birlik", ["kv.m", "kub.m", "metr", "dona", "komplekt"], key="u_b")
-                        qt = st.number_input("Hajmi", min_value=0.0, step=0.1, key="u_h")
-                        pr = st.number_input("Ustaga 1 birlik ish haqi", min_value=0.0, step=1000.0, key="u_n")
-                        if st.form_submit_button("Qo'shish") and jn:
-                            execute_query("INSERT INTO worker_works (project_id, job_name, unit, quantity, price_per_unit, total_price) VALUES (?, ?, ?, ?, ?, ?)",
-                                          (active_p_id, jn, un, qt, pr, qt*pr))
-                            st.rerun()
+            # 2. Ustalar Smetasi
+            with t2:
+                st.markdown("### 👷 Ustalar Smetasi")
+                with st.form("pr_ww", clear_on_submit=True):
+                    c1, c2, c3, c4 = st.columns(4)
+                    jn = c1.text_input("Ish nomi", key="jn2")
+                    un = c2.selectbox("Birlik", ["kv.m", "kub.m", "metr", "dona", "komplekt"], key="un2")
+                    qt = c3.number_input("Hajmi", min_value=0.0, step=0.1, key="qt2")
+                    pr = c4.number_input("1 Birlik ish haqi", min_value=0.0, step=1000.0, key="pr2")
+                    if st.form_submit_button("Qo'shish", key="btn2") and jn:
+                        execute_query("INSERT INTO worker_works (project_id, job_name, unit, quantity, price_per_unit, total_price) VALUES (?, ?, ?, ?, ?, ?)",
+                                      (active_pid, jn, un, qt, pr, qt*pr))
+                        st.rerun()
                 
-                df_ww = get_data("SELECT id, job_name, unit, quantity, price_per_unit, total_price FROM worker_works WHERE project_id = ?", (active_p_id,))
-                if not df_ww.empty:
-                    d_view = df_ww[['job_name', 'unit', 'quantity', 'price_per_unit', 'total_price']].copy()
-                    d_view.columns = ["Ish nomi", "Birlik", "Hajmi", "1 Birlik ish haqi", "Jami ish haqi"]
-                    d_view.index = range(1, len(d_view) + 1)
-                    st.dataframe(d_view, use_container_width=True)
+                df = get_data("SELECT id, job_name, unit, quantity, price_per_unit, total_price FROM worker_works WHERE project_id = ?", (active_pid,))
+                if not df.empty:
+                    v_df = df[['job_name', 'unit', 'quantity', 'price_per_unit', 'total_price']].copy()
+                    v_df.columns = ["Ish nomi", "Birlik", "Hajmi", "1 Birlik ish haqi", "Jami ish haqi"]
+                    v_df.index = range(1, len(v_df) + 1)
+                    st.dataframe(v_df, use_container_width=True)
                     
-                    with st.expander("🗑️ Qatorni o'chirish"):
-                        r_num = st.number_input("O'chiriladigan qator raqami:", min_value=1, max_value=len(df_ww), step=1, key="del_ww_pr")
-                        if st.button("O'chirish", key="btn_del_ww"):
-                            t_id = df_ww.iloc[r_num - 1]['id']
-                            execute_query("DELETE FROM worker_works WHERE id = ?", (t_id,))
-                            st.rerun()
-                    st.metric("Ustalarning umumiy ish haqi qiymati:", f"{df_ww['total_price'].sum():,.2f}")
+                    del_r = st.number_input("O'chiriladigan qator raqami:", min_value=1, max_value=len(df), step=1, key="dww")
+                    if st.button("Qatorni o'chirish", key="bow"):
+                        execute_query("DELETE FROM worker_works WHERE id = ?", (df.iloc[del_r - 1]['id'],))
+                        st.rerun()
+                    st.metric("Ustalarning jami ish haqi qiymati:", f"{df['total_price'].sum():,.2f}")
                 else:
-                    st.info("Hozircha ma'lumot yo'q.")
+                    st.info("Hozircha ma'lumot kiritilmagan.")
 
-            # 3. Uy egasidan olingan pullar
-            with tab3:
-                st.subheader("💰 Uy Egasidan Olingan Mablag'lar")
-                with st.expander("➕ Pul olishni yozish"):
-                    with st.form("op_add"):
-                        dt = st.date_input("Sana")
-                        am = st.number_input("Summa", min_value=0.0, step=10000.0)
-                        nt = st.text_input("Izoh")
-                        if st.form_submit_button("Saqlash") and am > 0:
-                            execute_query("INSERT INTO owner_payments (project_id, date, amount, note) VALUES (?, ?, ?, ?)",
-                                          (active_p_id, str(dt), am, nt))
-                            st.rerun()
+            # 3. Uy Egasidan Olingan Pullar
+            with t3:
+                st.markdown("### 💰 Uy Egasidan Olingan Pullar")
+                with st.form("pr_op", clear_on_submit=True):
+                    c1, c2, c3 = st.columns(3)
+                    dt = c1.date_input("Sana")
+                    am = c2.number_input("Summa", min_value=0.0, step=10000.0)
+                    nt = c3.text_input("Izoh")
+                    if st.form_submit_button("Saqlash") and am > 0:
+                        execute_query("INSERT INTO owner_payments (project_id, date, amount, note) VALUES (?, ?, ?, ?)", (active_pid, str(dt), am, nt))
+                        st.rerun()
                 
-                df_op = get_data("SELECT id, date, amount, note FROM owner_payments WHERE project_id = ?", (active_p_id,))
-                if not df_op.empty:
-                    d_view = df_op[['date', 'amount', 'note']].copy()
-                    d_view.columns = ["Sana", "Olingan summa", "Izoh"]
-                    d_view.index = range(1, len(d_view) + 1)
-                    st.dataframe(d_view, use_container_width=True)
+                df = get_data("SELECT id, date, amount, note FROM owner_payments WHERE project_id = ?", (active_pid,))
+                if not df.empty:
+                    v_df = df[['date', 'amount', 'note']].copy()
+                    v_df.columns = ["Sana", "Olingan summa", "Izoh"]
+                    v_df.index = range(1, len(v_df) + 1)
+                    st.dataframe(v_df, use_container_width=True)
                     
-                    with st.expander("🗑️ To'lovni o'chirish"):
-                        r_num = st.number_input("O'chiriladigan qator raqami:", min_value=1, max_value=len(df_op), step=1, key="del_op_pr")
-                        if st.button("O'chirish", key="btn_del_op"):
-                            t_id = df_op.iloc[r_num - 1]['id']
-                            execute_query("DELETE FROM owner_payments WHERE id = ?", (t_id,))
-                            st.rerun()
-                    st.metric("Uy egasidan olingan jami pul:", f"{df_op['amount'].sum():,.2f}")
+                    del_r = st.number_input("O'chiriladigan qator raqami:", min_value=1, max_value=len(df), step=1, key="dop")
+                    if st.button("Qatorni o'chirish", key="bop"):
+                        execute_query("DELETE FROM owner_payments WHERE id = ?", (df.iloc[del_r - 1]['id'],))
+                        st.rerun()
+                    st.metric("Jami olingan pul:", f"{df['amount'].sum():,.2f}")
                 else:
                     st.info("To'lovlar kiritilmagan.")
 
-            # 4. Ustalarga berilgan pullar
-            with tab4:
-                st.subheader("💵 Ustalarga Berilgan Ish Haqlari")
-                with st.expander("➕ Ustaga pul berish"):
-                    with st.form("wp_add"):
-                        wn = st.text_input("Usta ismi")
-                        dt = st.date_input("Sana")
-                        am = st.number_input("Summa", min_value=0.0, step=5000.0)
-                        nt = st.text_input("Izoh")
-                        if st.form_submit_button("Saqlash") and am > 0:
-                            execute_query("INSERT INTO worker_payments (project_id, worker_name, date, amount, note) VALUES (?, ?, ?, ?, ?)",
-                                          (active_p_id, wn, str(dt), am, nt))
-                            st.rerun()
+            # 4. Ustalarga Berilgan Pullar
+            with t4:
+                st.markdown("### 💵 Ustalarga Berilgan Pullar")
+                with st.form("pr_wp", clear_on_submit=True):
+                    c1, c2, c3, c4 = st.columns(4)
+                    wn = c1.text_input("Usta nomi")
+                    dt = c2.date_input("Sana", key="dt2")
+                    am = c3.number_input("Summa", min_value=0.0, step=5000.0, key="am2")
+                    nt = c4.text_input("Izoh", key="nt2")
+                    if st.form_submit_button("Saqlash", key="sb2") and am > 0:
+                        execute_query("INSERT INTO worker_payments (project_id, worker_name, date, amount, note) VALUES (?, ?, ?, ?, ?)", (active_pid, wn, str(dt), am, nt))
+                        st.rerun()
                 
-                df_wp = get_data("SELECT id, worker_name, date, amount, note FROM worker_payments WHERE project_id = ?", (active_p_id,))
-                if not df_wp.empty:
-                    d_view = df_wp[['worker_name', 'date', 'amount', 'note']].copy()
-                    d_view.columns = ["Usta nomi", "Sana", "Berilgan summa", "Izoh"]
-                    d_view.index = range(1, len(d_view) + 1)
-                    st.dataframe(d_view, use_container_width=True)
+                df = get_data("SELECT id, worker_name, date, amount, note FROM worker_payments WHERE project_id = ?", (active_pid,))
+                if not df.empty:
+                    v_df = df[['worker_name', 'date', 'amount', 'note']].copy()
+                    v_df.columns = ["Usta nomi", "Sana", "Berilgan summa", "Izoh"]
+                    v_df.index = range(1, len(v_df) + 1)
+                    st.dataframe(v_df, use_container_width=True)
                     
-                    with st.expander("🗑️ To'lovni o'chirish"):
-                        r_num = st.number_input("O'chiriladigan qator raqami:", min_value=1, max_value=len(df_wp), step=1, key="del_wp_pr")
-                        if st.button("O'chirish", key="btn_del_wp"):
-                            t_id = df_wp.iloc[r_num - 1]['id']
-                            execute_query("DELETE FROM worker_payments WHERE id = ?", (t_id,))
-                            st.rerun()
-                    st.metric("Ustalarga berilgan jami pul:", f"{df_wp['amount'].sum():,.2f}")
+                    del_r = st.number_input("O'chiriladigan qator raqami:", min_value=1, max_value=len(df), step=1, key="dwp")
+                    if st.button("Qatorni o'chirish", key="bwp"):
+                        execute_query("DELETE FROM worker_payments WHERE id = ?", (df.iloc[del_r - 1]['id'],))
+                        st.rerun()
+                    st.metric("Jami berilgan pul:", f"{df['amount'].sum():,.2f}")
                 else:
-                    st.info("Ustalar to'lovlari kiritilmagan.")
+                    st.info("To'lovlar kiritilmagan.")
 
-            # 5. PDF
-            with tab5:
-                st.subheader("📄 PDF Hisobot Yaratish")
+            # 5. Login Berish
+            with t5:
+                st.markdown(f"### 🔑 '{sel_p}' uchun Login va Parol berish")
+                c_l1, c_l2 = st.columns(2)
+                with c_l1:
+                    with st.form("form_o_log", clear_on_submit=True):
+                        st.markdown("##### 🏠 Uy Egasi")
+                        lg = st.text_input("Login", key="l1")
+                        ps = st.text_input("Parol", type="password", key="p1")
+                        if st.form_submit_button("Uy egasiga login berish") and lg and ps:
+                            try:
+                                execute_query("INSERT INTO users (username, password, role, project_id) VALUES (?, ?, 'uy_egasi', ?)", (lg, ps, active_pid))
+                                st.success("Muvaffaqiyatli yaratildi!")
+                            except:
+                                st.error("Bu login allaqachon mavjud!")
+                with c_l2:
+                    with st.form("form_w_log", clear_on_submit=True):
+                        st.markdown("##### 👷 Usta")
+                        lg = st.text_input("Login", key="l2")
+                        ps = st.text_input("Parol", type="password", key="p2")
+                        if st.form_submit_button("Ustaga login berish") and lg and ps:
+                            try:
+                                execute_query("INSERT INTO users (username, password, role, project_id) VALUES (?, ?, 'usta', ?)", (lg, ps, active_pid))
+                                st.success("Muvaffaqiyatli yaratildi!")
+                            except:
+                                st.error("Bu login allaqachon mavjud!")
+                
+                st.markdown("<br>", unsafe_allow_html=True)
+                st.markdown("##### 👥 Berilgan loginlar ro'yxati")
+                u_df = get_data("SELECT id, username AS 'Login', role AS 'Rol' FROM users WHERE project_id = ?", (active_pid,))
+                if not u_df.empty:
+                    u_df.index = range(1, len(u_df) + 1)
+                    st.dataframe(u_df, use_container_width=True)
+                    u_id = st.number_input("O'chiriladigan User ID si:", min_value=1, step=1)
+                    if st.button("Foydalanuvchini o'chirish"):
+                        execute_query("DELETE FROM users WHERE id = ?", (u_id,))
+                        st.success("O'chirildi!")
+                        st.rerun()
+                else:
+                    st.info("Hozircha login berilmagan.")
+
+            # 6. PDF Hisobot
+            with t6:
+                st.markdown("### 📄 PDF Hisobot Yaratish")
                 def generate_pdf():
                     buffer = io.BytesIO()
                     doc = SimpleDocTemplate(buffer, pagesize=A4)
                     elements = []
                     styles = getSampleStyleSheet()
-                    elements.append(Paragraph(f"<b>Obyekt Hisoboti: {selected_p}</b>", styles['Title']))
+                    elements.append(Paragraph(f"<b>Obyekt Hisoboti: {sel_p}</b>", styles['Title']))
                     elements.append(Paragraph("<b>Prorab: Abdulla</b>", styles['Normal']))
                     elements.append(Spacer(1, 12))
                     
-                    w_data = get_data("SELECT job_name, unit, quantity, price_per_unit, total_price FROM owner_works WHERE project_id = ?", (active_p_id,))
+                    w_data = get_data("SELECT job_name, unit, quantity, price_per_unit, total_price FROM owner_works WHERE project_id = ?", (active_pid,))
                     if not w_data.empty:
                         data = [["Ish nomi", "Birlik", "Hajm", "Narx", "Jami"]]
                         for _, r in w_data.iterrows():
@@ -366,54 +376,7 @@ else:
                     doc.build(elements)
                     buffer.seek(0)
                     return buffer
-                st.download_button("📥 PDF Hisobotni Yuklab Olish", generate_pdf(), file_name=f"{selected_p}_hisobot.pdf", mime="application/pdf")
-
-            # Login/Parol yaratish bo'limi
-            st.markdown("---")
-            st.subheader(f"🔑 '{selected_p}' uchun Login va Parol berish")
-            col_l1, col_l2 = st.columns(2)
-            
-            with col_l1:
-                with st.form("u_form_1"):
-                    st.markdown("##### 🏠 Uy Egasi uchun")
-                    o_log = st.text_input("Login", key="ol")
-                    o_pas = st.text_input("Parol", type="password", key="op")
-                    if st.form_submit_button("Uy egasiga login berish"):
-                        if o_log and o_pas:
-                            try:
-                                execute_query("INSERT INTO users (username, password, role, project_id) VALUES (?, ?, 'uy_egasi', ?)", (o_log, o_pas, active_p_id))
-                                st.success("Muvaffaqiyatli yaratildi!")
-                            except:
-                                st.error("Bu login band!")
-                                
-            with col_l2:
-                with st.form("u_form_2"):
-                    st.markdown("##### 👷 Usta uchun")
-                    w_log = st.text_input("Login", key="wl")
-                    w_pas = st.text_input("Parol", type="password", key="wp")
-                    if st.form_submit_button("Ustaga login berish"):
-                        if w_log and w_pas:
-                            try:
-                                execute_query("INSERT INTO users (username, password, role, project_id) VALUES (?, ?, 'usta', ?)", (w_log, w_pas, active_p_id))
-                                st.success("Muvaffaqiyatli yaratildi!")
-                            except:
-                                st.error("Bu login band!")
-
-            # Berilgan foydalanuvchilar ro'yxati
-            with st.expander("👥 Bu uyga biriktirilgan foydalanuvchilar ro'yxati"):
-                u_chk = get_data("SELECT id, username AS 'Login', role AS 'Rol' FROM users WHERE project_id = ?", (active_p_id,))
-                if not u_chk.empty:
-                    u_chk.index = range(1, len(u_chk) + 1)
-                    st.dataframe(u_chk, use_container_width=True)
-                    u_del_id = st.number_input("O'chiriladigan User ID si:", min_value=1, step=1)
-                    if st.button("Foydalanuvchini o'chirish"):
-                        execute_query("DELETE FROM users WHERE id = ?", (u_del_id,))
-                        st.success("O'chirildi!")
-                        st.rerun()
-                else:
-                    st.info("Hozircha foydalanuvchilar yo'q.")
-        else:
-            st.warning("Hali uylar qo'shilmagan. Chap menyudan uy qo'shing.")
+                st.download_button("📥 PDF Hisobotni Yuklab Olish", generate_pdf(), file_name=f"{sel_p}_hisobot.pdf", mime="application/pdf")
 
     # ---------------------------------------------------------
     # B) UY EGASI PANELI
@@ -421,32 +384,27 @@ else:
     elif role == 'uy_egasi':
         p_id = user['project_id']
         p_info = get_data("SELECT project_name FROM projects WHERE id = ?", (p_id,))
-        p_title = p_info.iloc[0]['project_name'] if not p_info.empty else "Uyingiz"
+        p_name = p_info.iloc[0]['project_name'] if not p_info.empty else "Uyingiz"
         
-        st.title(f"🏡 {p_title} — Uy Egasi Paneli")
-        st.info("Bu yerda uyingizning smetasi va o'zingiz bergan pullar tarixi ko'rsatilgan.")
+        st.markdown(f"<div class='main-header'>🏡 {p_name} — Uy Egasi Paneli</div>", unsafe_allow_html=True)
         
-        t1, t2 = st.tabs(["📊 Uy Smetasi", "💰 Men Bergan Pullar"])
-        
+        t1, t2 = st.tabs(["📊 Smetani Ko'rish", "💰 Men Bergan Pullar"])
         with t1:
-            st.subheader("Bajarilayotgan Ishlar va Narxlar")
-            df_ow = get_data("SELECT job_name, unit, quantity, price_per_unit, total_price FROM owner_works WHERE project_id = ?", (p_id,))
-            if not df_ow.empty:
-                df_ow.columns = ["Ish nomi", "Birlik", "Hajmi", "1 Birlik narxi", "Jami qiymat"]
-                df_ow.index = range(1, len(df_ow) + 1)
-                st.dataframe(df_ow, use_container_width=True)
-                st.metric("Uyingizning Umumiy Summasi:", f"{df_ow['Jami qiymat'].sum():,.2f}")
+            df = get_data("SELECT job_name, unit, quantity, price_per_unit, total_price FROM owner_works WHERE project_id = ?", (p_id,))
+            if not df.empty:
+                df.columns = ["Ish nomi", "Birlik", "Hajmi", "1 Birlik narxi", "Jami qiymat"]
+                df.index = range(1, len(df) + 1)
+                st.dataframe(df, use_container_width=True)
+                st.metric("Uyingizning umumiy summasi:", f"{df['Jami qiymat'].sum():,.2f}")
             else:
                 st.info("Hozircha smeta kiritilmagan.")
-                
         with t2:
-            st.subheader("Prorabga Bergan Pullaringiz")
-            df_op = get_data("SELECT date, amount, note FROM owner_payments WHERE project_id = ?", (p_id,))
-            if not df_op.empty:
-                df_op.columns = ["Sana", "Berilgan summa", "Izoh"]
-                df_op.index = range(1, len(df_op) + 1)
-                st.dataframe(df_op, use_container_width=True)
-                given = df_op['Berilgan summa'].sum()
+            df = get_data("SELECT date, amount, note FROM owner_payments WHERE project_id = ?", (p_id,))
+            if not df.empty:
+                df.columns = ["Sana", "Berilgan summa", "Izoh"]
+                df.index = range(1, len(df.index) + 1)
+                st.dataframe(df, use_container_width=True)
+                given = df['Berilgan summa'].sum()
                 tot_df = get_data("SELECT total_price FROM owner_works WHERE project_id = ?", (p_id,))
                 tot = tot_df['total_price'].sum() if not tot_df.empty else 0
                 c1, c2 = st.columns(2)
@@ -461,32 +419,27 @@ else:
     elif role == 'usta':
         p_id = user['project_id']
         p_info = get_data("SELECT project_name FROM projects WHERE id = ?", (p_id,))
-        p_title = p_info.iloc[0]['project_name'] if not p_info.empty else "Ob'ekt"
+        p_name = p_info.iloc[0]['project_name'] if not p_info.empty else "Ob'ekt"
         
-        st.title(f"👷 {p_title} — Usta Paneli")
-        st.info("Bu yerda ob'ektdagi ish hajmlari va sizga berilgan ish haqi ko'rsatilgan.")
+        st.markdown(f"<div class='main-header'>👷 {p_name} — Usta Paneli</div>", unsafe_allow_html=True)
         
-        t1, t2 = st.tabs(["📋 Bajariladigan Ish Hajmi", "💵 Olingan Ish Haqlari"])
-        
+        t1, t2 = st.tabs(["📋 Ish Hajmlari va Ish Haqi", "💵 Olingan Pullar Tarixi"])
         with t1:
-            st.subheader("Ishlar va Ish Haqlari Hajmi")
-            df_ww = get_data("SELECT job_name, unit, quantity, price_per_unit, total_price FROM worker_works WHERE project_id = ?", (p_id,))
-            if not df_ww.empty:
-                df_ww.columns = ["Ish nomi", "Birlik", "Hajmi", "1 Birlik ish haqi", "Jami ish haqi"]
-                df_ww.index = range(1, len(df_ww) + 1)
-                st.dataframe(df_ww, use_container_width=True)
-                st.metric("Sizning umumiy ish haqigingiz:", f"{df_ww['Jami ish haqi'].sum():,.2f}")
+            df = get_data("SELECT job_name, unit, quantity, price_per_unit, total_price FROM worker_works WHERE project_id = ?", (p_id,))
+            if not df.empty:
+                df.columns = ["Ish nomi", "Birlik", "Hajmi", "1 Birlik ish haqi", "Jami ish haqi"]
+                df.index = range(1, len(df.index) + 1)
+                st.dataframe(df, use_container_width=True)
+                st.metric("Umumiy ish haqigingiz:", f"{df['Jami ish haqi'].sum():,.2f}")
             else:
                 st.info("Hozircha ishlar kiritilmagan.")
-                
         with t2:
-            st.subheader("Sizga Berilgan Pullar Tarixi")
-            df_wp = get_data("SELECT worker_name, date, amount, note FROM worker_payments WHERE project_id = ?", (p_id,))
-            if not df_wp.empty:
-                df_wp.columns = ["Usta nomi", "Sana", "Olingan summa", "Izoh"]
-                df_wp.index = range(1, len(df_wp) + 1)
-                st.dataframe(df_wp, use_container_width=True)
-                st.metric("Siz olgan jami pul:", f"{df_wp['Olingan summa'].sum():,.2f}")
+            df = get_data("SELECT worker_name, date, amount, note FROM worker_payments WHERE project_id = ?", (p_id,))
+            if not df.empty:
+                df.columns = ["Usta nomi", "Sana", "Olingan summa", "Izoh"]
+                df.index = range(1, len(df.index) + 1)
+                st.dataframe(df, use_container_width=True)
+                st.metric("Siz olgan jami pul:", f"{df['Olingan summa'].sum():,.2f}")
             else:
                 st.info("Sizga hali pul berilmagan.")
 
