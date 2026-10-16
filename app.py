@@ -66,7 +66,7 @@ if role == "Prorab (Tahrirlash)":
     password = st.sidebar.text_input("Prorab parolini kiriting:", type="password")
     
     # 📌 PAROLNI SHU YERDAN O'ZGARTIRISHINGIZ MUMKIN (Hozirgi parol: 1234)
-    PRORAB_PAROL = "1234" 
+    PRORAB_PAROL = "Ab0534443" 
     
     if password == PRORAB_PAROL:
         st.sidebar.success("Xush kelibsiz, Prorab!")
