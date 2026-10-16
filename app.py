@@ -3,14 +3,15 @@ import pandas as pd
 import sqlite3
 from reportlab.lib.pagesizes import A4
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
-from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
+import datetime
 import io
 
 # Sahifa sozlamalari
 st.set_page_config(page_title="Qurilish Boshqaruvi | Prorab Abdulla", layout="wide", initial_sidebar_state="collapsed")
 
-# 🎨 Toza va Zamonaviy CSS dizayn
+# 🎨 Chiroyli CSS dizayn
 st.markdown("""
     <style>
     .main-header {
@@ -18,13 +19,6 @@ st.markdown("""
         font-weight: 700;
         color: #1a73e8;
         margin-bottom: 10px;
-    }
-    .card {
-        background-color: #ffffff;
-        padding: 20px;
-        border-radius: 10px;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-        margin-bottom: 20px;
     }
     .footer-brand {
         text-align: center;
@@ -168,7 +162,6 @@ else:
     if role == 'admin':
         st.markdown("<div class='main-header'>⚙️ Prorab Abdulla — Boshqaruv Markazi</div>", unsafe_allow_html=True)
         
-        # Uy qo'shish va tanlash qismi
         col_h1, col_h2 = st.columns([2, 1])
         with col_h1:
             projects = get_data("SELECT * FROM projects")
@@ -189,7 +182,6 @@ else:
 
         if active_pid:
             st.markdown("---")
-            # Asosiy menyu (Tablar)
             t1, t2, t3, t4, t5, t6 = st.tabs([
                 "🏠 Uy Egasi Smetasi", 
                 "👷 Ustalar Smetasi", 
@@ -353,30 +345,141 @@ else:
                 else:
                     st.info("Hozircha login berilmagan.")
 
-            # 6. PDF Hisobot
+            # 6. PDF Hisobot (Rasmdagi kabi professional shablon)
             with t6:
-                st.markdown("### 📄 PDF Hisobot Yaratish")
-                def generate_pdf():
+                st.markdown("### 📄 Professional PDF Hisobot Yaratish")
+                
+                pdf_type = st.radio("Qaysi hisobotni yuklab olmoqchisiz?", ["🏠 Uy Egasi Smetasi uchun PDF", "👷 Ustalar Smetasi uchun PDF"], horizontal=True)
+                
+                def generate_custom_pdf(is_owner=True):
                     buffer = io.BytesIO()
-                    doc = SimpleDocTemplate(buffer, pagesize=A4)
+                    doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=30)
                     elements = []
-                    styles = getSampleStyleSheet()
-                    elements.append(Paragraph(f"<b>Obyekt Hisoboti: {sel_p}</b>", styles['Title']))
-                    elements.append(Paragraph("<b>Prorab: Abdulla</b>", styles['Normal']))
-                    elements.append(Spacer(1, 12))
                     
-                    w_data = get_data("SELECT job_name, unit, quantity, price_per_unit, total_price FROM owner_works WHERE project_id = ?", (active_pid,))
+                    # Styles
+                    styles = getSampleStyleSheet()
+                    title_style = ParagraphStyle(
+                        'TitleStyle',
+                        parent=styles['Heading1'],
+                        fontName='Helvetica-Bold',
+                        fontSize=16,
+                        alignment=1, # Center
+                        textColor=colors.HexColor('#0d3b66')
+                    )
+                    normal_style = ParagraphStyle(
+                        'NormalStyle',
+                        parent=styles['Normal'],
+                        fontName='Helvetica',
+                        fontSize=10,
+                        textColor=colors.HexColor('#333333')
+                    )
+                    bold_style = ParagraphStyle(
+                        'BoldStyle',
+                        parent=styles['Normal'],
+                        fontName='Helvetica-Bold',
+                        fontSize=10,
+                        textColor=colors.HexColor('#000000')
+                    )
+                    
+                    # Sarlavha
+                    elements.append(Paragraph("BAJARILGAN ISHLAR VA REMONT SMETASI", title_style))
+                    elements.append(Spacer(1, 10))
+                    
+                    # Chiziq
+                    elements.append(Table([['']], colWidths=[535], rowHeights=[2], style=[('BACKGROUND', (0,0), (-1,-1), colors.HexColor('#1a73e8'))]))
+                    elements.append(Spacer(1, 15))
+                    
+                    # Ma'lumotlar bloki
+                    current_time = datetime.datetime.now().strftime("%d.%m.%Y - %H:%M")
+                    info_data = [
+                        [Paragraph("<b>Prorab / Usta:</b> Prorab Abdulla", normal_style), Paragraph(f"<b>Hujjat Sanasi:</b> {current_time}", normal_style)],
+                        [Paragraph(f"<b>Buyurtmachi (Obyekt):</b> {sel_p}", normal_style), Paragraph("<b>Holat:</b> Bajarildi (Padkluch)", normal_style)]
+                    ]
+                    info_table = Table(info_data, colWidths=[267, 268])
+                    info_table.setStyle(TableStyle([
+                        ('BOTTOMPADDING', (0,0), (-1,-1), 8),
+                    ]))
+                    elements.append(info_table)
+                    elements.append(Spacer(1, 15))
+                    
+                    # Ma'lumotlarni bazadan olish
+                    table_db_name = "owner_works" if is_owner else "worker_works"
+                    w_data = get_data(f"SELECT job_name, unit, quantity, price_per_unit, total_price FROM {table_db_name} WHERE project_id = ?", (active_pid,))
+                    
+                    # Jadval sarlavhasi va qatorlari
+                    table_content = [["\u25A0", "Bajarilgan Ish Nomi", "Birlik", "Hajmi", "Narxi (So'm)", "Jami (So'm)"]]
+                    
+                    total_sum = 0
                     if not w_data.empty:
-                        data = [["Ish nomi", "Birlik", "Hajm", "Narx", "Jami"]]
-                        for _, r in w_data.iterrows():
-                            data.append([str(r['job_name']), str(r['unit']), str(r['quantity']), str(r['price_per_unit']), str(r['total_price'])])
-                        t = Table(data)
-                        t.setStyle(TableStyle([('BACKGROUND', (0,0), (-1,0), colors.grey), ('GRID', (0,0), (-1,-1), 1, colors.black)]))
-                        elements.append(t)
+                        for idx, r in w_data.iterrows():
+                            total_sum += r['total_price']
+                            table_content.append([
+                                str(idx + 1),
+                                str(r['job_name']),
+                                str(r['unit']),
+                                f"{r['quantity']:.2f}",
+                                f"{r['price_per_unit']:,.0f}".replace(",", " "),
+                                f"{r['total_price']:,.0f}".replace(",", " ")
+                            ])
+                    else:
+                        table_content.append(["1", "Ma'lumot kiritilmagan", "-", "0", "0", "0"])
+                    
+                    t = Table(table_content, colWidths=[30, 205, 55, 65, 90, 90])
+                    t.setStyle(TableStyle([
+                        ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#1a73e8')),
+                        ('TEXTCOLOR', (0,0), (-1,0), colors.whitesmoke),
+                        ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+                        ('ALIGN', (1,1), (1,-1), 'LEFT'), # Ish nomini chapga surish
+                        ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+                        ('FONTSIZE', (0,0), (-1,0), 10),
+                        ('BOTTOMPADDING', (0,0), (-1,0), 8),
+                        ('TOPPADDING', (0,0), (-1,0), 8),
+                        ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#cccccc')),
+                        ('BACKGROUND', (0,1), (-1,-1), colors.HexColor('#ffffff')),
+                        ('FONTNAME', (0,1), (-1,-1), 'Helvetica'),
+                        ('FONTSIZE', (0,1), (-1,-1), 9),
+                    ]))
+                    elements.append(t)
+                    elements.append(Spacer(1, 20))
+                    
+                    # Jami summa
+                    title_sum_text = "UY EGASI TO'LASH KERAK BO'LGAN JAMI SUMMA:" if is_owner else "USTALARGA TO'LANADIGAN JAMI SUMMA:"
+                    sum_text = f"<b>{title_sum_text} {total_sum:,.0f} So'm</b>".replace(",", " ")
+                    elements.append(Paragraph(sum_text, ParagraphStyle('SumStyle', parent=bold_style, fontSize=12, textColor=colors.HexColor('#1a73e8'))))
+                    elements.append(Spacer(1, 40))
+                    
+                    # Imzolar bloki
+                    sign_date = datetime.datetime.now().strftime("%d.%m.%Y")
+                    sign_data = [
+                        [Paragraph("<b>Prorab:</b>", bold_style), Paragraph("<b>Buyurtmachi / Usta:</b>", bold_style)],
+                        [Paragraph("Prorab Abdulla", normal_style), Paragraph(sel_p, normal_style)],
+                        [Paragraph("Imzo: _____________________", normal_style), Paragraph("Imzo: _____________________", normal_style)],
+                        [Paragraph(f"Sana: {sign_date}", normal_style), Paragraph(f"Sana: {sign_date}", normal_style)]
+                    ]
+                    sign_table = Table(sign_data, colWidths=[267, 268])
+                    sign_table.setStyle(TableStyle([
+                        ('BOTTOMPADDING', (0,0), (-1,-1), 10),
+                    ]))
+                    elements.append(sign_table)
+                    
                     doc.build(elements)
                     buffer.seek(0)
                     return buffer
-                st.download_button("📥 PDF Hisobotni Yuklab Olish", generate_pdf(), file_name=f"{sel_p}_hisobot.pdf", mime="application/pdf")
+
+                if pdf_type == "🏠 Uy Egasi Smetasi uchun PDF":
+                    st.download_button(
+                        "📥 Uy Egasi uchun PDF Hisobotni Yuklab Olish", 
+                        generate_custom_pdf(is_owner=True), 
+                        file_name=f"Uy_Egasi_Smeta_{sel_p}.pdf", 
+                        mime="application/pdf"
+                    )
+                else:
+                    st.download_button(
+                        "📥 Ustalar Smetasi uchun PDF Hisobotni Yuklab Olish", 
+                        generate_custom_pdf(is_owner=False), 
+                        file_name=f"Ustalar_Smeta_{sel_p}.pdf", 
+                        mime="application/pdf"
+                    )
 
     # ---------------------------------------------------------
     # B) UY EGASI PANELI
