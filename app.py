@@ -3,9 +3,9 @@ import pandas as pd
 import json
 import os
 
-# --- SAHFA SOZLAMALARI ---
+# --- SAHIFA SOZLAMALARI ---
 st.set_page_config(
-    page_page_title="Prorab Abdulla - Qurilish Nazorati",
+    page_title="Prorab Abdulla - Qurilish Nazorati",
     page_icon="🏗️",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -56,10 +56,10 @@ def load_data():
                     "usta_password": "111",
                     "avans": 5000000,
                     "ishlar": {
-                        "Beton quyish (m³)": {"mintaqa": "Karkas", "birlik": "m³", "hajm": 12.0, "narx": 250000},
-                        "Pishgan g'isht (dona)": {"mintaqa": "Karkas", "birlik": "dona", "hajm": 5000.0, "narx": 1500},
-                        "Rodband suvoq (m²)": {"mintaqa": "Ichki ta'mir", "birlik": "m²", "hajm": 150.0, "narx": 35000},
-                        "Elektrika ishlari (tochka)": {"mintaqa": "Ichki ta'mir", "birlik": "tochka", "hajm": 25.0, "narx": 50000}
+                        "Beton quyish": {"mintaqa": "Karkas", "birlik": "m³", "hajm": 12.0, "narx": 250000},
+                        "Pishgan g'isht terish": {"mintaqa": "Karkas", "birlik": "dona", "hajm": 5000.0, "narx": 1500},
+                        "Rodband suvoq": {"mintaqa": "Ichki ta'mir", "birlik": "m²", "hajm": 150.0, "narx": 35000},
+                        "Elektrika ishlari": {"mintaqa": "Ichki ta'mir", "birlik": "tochka", "hajm": 25.0, "narx": 50000}
                     }
                 }
             }
@@ -75,7 +75,7 @@ def save_data(data):
     with open(DB_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
 
-# --- BARCHA ISHLAR KATALOGI (DEFAULT) ---
+# --- BARCHA ISHLAR KATALOGI ---
 DEFAULT_WORKS = [
     # Noldan qurish (Karkas)
     ("Beton quyish", "m³", "Karkas"),
@@ -234,7 +234,6 @@ if st.session_state.role == "usta":
         m2.metric("💵 Berilgan Avans/To'lov", f"{avans:,.0f} so'm")
         m3.metric("⚖️ Qolgan Qarzdorlik", f"{qolgan_summa:,.0f} so'm")
 
-
 # ==========================================
 # 3. PRORAB ABDULLA (ADMIN PANELI)
 # ==========================================
@@ -243,9 +242,7 @@ if st.session_state.role == "admin":
     
     tab1, tab2 = st.tabs(["📊 Xonadonlar va Smetalar", "➕ Yangi Xonadon Qo'shish"])
     
-    # ----------------------------------------------------
-    # TAB 1: SMETALARNI BOSHQARISH VA TAXRIRLASH
-    # ----------------------------------------------------
+    # TAB 1: SMETALARNI BOSHQARISH
     with tab1:
         xonadonlar = list(db_data["xonadonlar"].keys())
         
@@ -274,13 +271,11 @@ if st.session_state.role == "admin":
                 # ISH QO'SHISH FORMASI
                 with st.form("add_work_form"):
                     st.write("**➕ Yangi Ish va Hajm Kirish**")
-                    col_w1, col_w2, col_w3, col_w4 = st.columns([3, 1.5, 1.5, 1.5])
+                    col_w1, col_w2, col_w3 = st.columns([3, 1.5, 1.5])
                     
-                    # Ish tanlash
                     work_options = [f"{w[0]} ({w[1]})" for w in DEFAULT_WORKS]
                     selected_work_str = col_w1.selectbox("Ish Turi", work_options)
                     
-                    # Birligini aniqlash
                     selected_work_tuple = next(w for w in DEFAULT_WORKS if f"{w[0]} ({w[1]})" == selected_work_str)
                     
                     hajm_val = col_w2.number_input("Hajmi (kv, m, dona, tochka)", min_value=0.0, step=0.5)
@@ -305,7 +300,7 @@ if st.session_state.role == "admin":
                         else:
                             st.error("Hajm va Narx 0 dan katta bo'lishi kerak!")
 
-                # JADVALNI KO'RSATISH VA O'CHIRISH
+                # JADVALNI KO'RSATISH
                 ishlar = house_info.get("ishlar", {})
                 if ishlar:
                     st.write("### 📋 Joriy Smeta Jadvali")
@@ -334,7 +329,7 @@ if st.session_state.role == "admin":
                     current_avans = house_info.get("avans", 0)
                     new_avans = ca1.number_input("💵 Uy egasidan olingan Avans/To'lov summasi (so'm):", value=float(current_avans), step=500000.0)
                     
-                    if ca2.button("Avansni Saqlash", use_container_width=False):
+                    if ca2.button("Avansni Saqlash"):
                         db_data["xonadonlar"][selected_house]["avans"] = new_avans
                         save_data(db_data)
                         st.success("Avans summasi saqlandi!")
@@ -345,7 +340,7 @@ if st.session_state.role == "admin":
                     m1, m2, m3 = st.columns(3)
                     m1.metric("💰 Umumiy Smeta Summasi", f"{total_sum:,.0f} so'm")
                     m2.metric("💵 Olingan Avans", f"{new_avans:,.0f} so'm")
-                    m3.metric("⚖️ Qolgan Qarzdorlik (Uy egasi berishi kerak)", f"{qolgan:,.0f} so'm")
+                    m3.metric("⚖️ Qolgan Qarzdorlik", f"{qolgan:,.0f} so'm")
                     
                     # Ishni o'chirish
                     st.write("---")
@@ -367,9 +362,7 @@ if st.session_state.role == "admin":
                         st.success("Xonadon muvaffaqiyatli o'chirildi!")
                         st.rerun()
 
-    # ----------------------------------------------------
-    # TAB 2: YANGI XONADON QO'SHISH (50+ xonadonlar uchun)
-    # ----------------------------------------------------
+    # TAB 2: YANGI XONADON QO'SHISH
     with tab2:
         st.subheader("➕ Yangi Xonadon (Obyekt) va Usta Kirishini Yaratish")
         
