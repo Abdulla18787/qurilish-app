@@ -36,20 +36,16 @@ st.markdown("""
 DB_FILE = "qurilish_data.json"
 
 def load_data():
+    default_admin = {"username": "abdulla", "password": "0101"}
+    
     if not os.path.exists(DB_FILE):
         initial_data = {
-            "admin": {"username": "abdulla", "password": "0101"},
+            "admin": default_admin,
             "xonadonlar": {
                 "1-xonadon (Toshkent, Chilonzor)": {
                     "usta_login": "usta",
                     "usta_password": "1111",
-                    "avanslar": [
-                        {
-                            "sana": "2026-10-17 14:30",
-                            "izoh": "Boshlang'ich materiallar va oziq-ovqat uchun",
-                            "summa": 5000000.0
-                        }
-                    ],
+                    "avanslar": [],  # Boshlanishida avanslar 0
                     "ishlar": {
                         "Beton quyish": {"mintaqa": "Karkas", "birlik": "m³", "hajm": 15.0, "narx": 15000}
                     }
@@ -62,20 +58,18 @@ def load_data():
     
     with open(DB_FILE, "r", encoding="utf-8") as f:
         data = json.load(f)
-        # Eski strukturadan avanslarni yangi formatga o'tkazish (tekshiruv)
-        for h_name, h_info in data.get("xonadonlar", {}).items():
-            if "avanslar" not in h_info:
-                old_avans = h_info.get("avans", 0)
-                h_info["avanslar"] = []
-                if old_avans > 0:
-                    h_info["avanslar"].append({
-                        "sana": datetime.now().strftime("%Y-%m-%d %H:%M"),
-                        "izoh": "Eski tizimdan o'tkazilgan avans",
-                        "summa": float(old_avans)
-                    })
-                if "avans" in h_info:
-                    del h_info["avans"]
-        return data
+        
+    # Koddagi admin va parolni doim ustun qo'yish
+    data["admin"] = default_admin
+    
+    # Eski strukturani yangilash
+    for h_name, h_info in data.get("xonadonlar", {}).items():
+        if "avanslar" not in h_info:
+            h_info["avanslar"] = []
+        if "avans" in h_info:
+            del h_info["avans"]
+                
+    return data
 
 def save_data(data):
     with open(DB_FILE, "w", encoding="utf-8") as f:
@@ -84,43 +78,43 @@ def save_data(data):
 # --- BARCHA ISHLAR KATALOGI ---
 DEFAULT_WORKS = [
     # Noldan qurish (Karkas)
-    ("Beton quyish", "m", "Karkas"),
-    ("Padushka quyish", "m", "Karkas"),
-    ("Rigel / Kolonna", "m", "Karkas"),
-    ("Seysmopoyas (Sesma)", "m", "Karkas"),
-    ("Peremichka", "m", "Karkas"),
+    ("Beton quyish", "m³", "Karkas"),
+    ("Padushka quyish", "m³", "Karkas"),
+    ("Rigel / Kolonna", "m³", "Karkas"),
+    ("Seysmopoyas (Sesma)", "m³", "Karkas"),
+    ("Peremichka", "m³", "Karkas"),
     ("Pishgan g'isht terish", "dona", "Karkas"),
     ("Plita o'rnatish", "dona", "Karkas"),
     ("Plita obvyazka", "m", "Karkas"),
     ("Seredeshnik", "m", "Karkas"),
-    ("Lumboz", "kv", "Karkas"),
-    ("Tom yevro (Krovlya)", "kv", "Karkas"),
+    ("Lumboz", "m²", "Karkas"),
+    ("Tom yevro (Krovlya)", "m²", "Karkas"),
     ("Slef o'rnatish", "m", "Karkas"),
-    ("Transheya kovlash", "kv", "Karkas"),
+    ("Transheya kovlash", "m³", "Karkas"),
     ("Gazoblok terish", "dona", "Karkas"),
     ("Shlakoblok terish", "dona", "Karkas"),
-    ("Styajka quyish", "kv", "Karkas"),
-    ("Monolit quyish", "m", "Karkas"),
-    ("Tsement suvoq", "m", "Karkas"),
+    ("Styajka quyish", "m²", "Karkas"),
+    ("Monolit quyish", "m²", "Karkas"),
+    ("Tsement suvoq", "m²", "Karkas"),
     
     # Ichki ta'mirlash
-    ("Rodband suvoq", "kv", "Ichki ta'mir"),
-    ("Shpaklyovka (Tyag/Glan)", "kv", "Ichki ta'mir"),
-    ("Laminat yotqizish", "kv", "Ichki ta'mir"),
+    ("Rodband suvoq", "m²", "Ichki ta'mir"),
+    ("Shpaklyovka (Tyag/Glan)", "m²", "Ichki ta'mir"),
+    ("Laminat yotqizish", "m²", "Ichki ta'mir"),
     ("Plintus o'rnatish", "m", "Ichki ta'mir"),
-    ("Gipsokarton montaj", "kv", "Ichki ta'mir"),
-    ("Emulsiya sepish/bo'yash", "kv", "Ichki ta'mir"),
-    ("Oboy yopishtirish", "kv", "Ichki ta'mir"),
-    ("PVX panel", "kv", "Ichki ta'mir"),
-    ("Bambuk panel", "kv", "Ichki ta'mir"),
+    ("Gipsokarton montaj", "m²", "Ichki ta'mir"),
+    ("Emulsiya sepish/bo'yash", "m²", "Ichki ta'mir"),
+    ("Oboy yopishtirish", "m²", "Ichki ta'mir"),
+    ("PVX panel", "m²", "Ichki ta'mir"),
+    ("Bambuk panel", "m²", "Ichki ta'mir"),
     ("Akfa eshik/rom o'rnatish", "dona", "Ichki ta'mir"),
     ("Santexnika ishlari", "tochka", "Ichki ta'mir"),
     ("Elektrika ishlari", "tochka", "Ichki ta'mir"),
     ("Lepka yopishtirish", "m", "Ichki ta'mir"),
     ("Rels/Parniz o'rnatish", "m", "Ichki ta'mir"),
-    ("Kafel/Kafelmangal", "kv", "Ichki ta'mir"),
-    ("Tyoply pol yotqizish", "kv", "Ichki ta'mir"),
-    ("Malyarka ishlari", "kv", "Ichki ta'mir"),
+    ("Kafel/Kafelmangal", "m²", "Ichki ta'mir"),
+    ("Tyoply pol yotqizish", "m²", "Ichki ta'mir"),
+    ("Malyarka ishlari", "m²", "Ichki ta'mir"),
     ("Eshik o'rnatish (Yog'och/MDX)", "dona", "Ichki ta'mir")
 ]
 
@@ -290,9 +284,7 @@ if st.session_state.role == "admin":
                 
                 sub_tab1, sub_tab2 = st.tabs(["🛠️ Ishlar va Smeta", "💵 Avanslar Boshqaruvi"])
                 
-                # ------------------------------------
                 # ISHLAR SMETASI
-                # ------------------------------------
                 with sub_tab1:
                     with st.form("add_work_form"):
                         st.write("**➕ Yangi Ish va Hajm Kirish**")
@@ -351,9 +343,7 @@ if st.session_state.role == "admin":
                             st.warning(f"'{del_work}' smetadan o'chirildi!")
                             st.rerun()
 
-                # ------------------------------------
                 # AVANSLAR BOSHQARUVI
-                # ------------------------------------
                 with sub_tab2:
                     st.write("### ➕ Yangi Avans / To'lov Berish")
                     with st.form("add_avans_form"):
@@ -395,7 +385,6 @@ if st.session_state.role == "admin":
                         
                         st.dataframe(pd.DataFrame(avans_rows_admin), use_container_width=True, hide_index=True)
 
-                        # Avansni o'chirish
                         st.write("**🗑️ Noto'g'ri yozilgan avansni o'chirish**")
                         del_idx = st.selectbox("O'chiriladigan avans tartib raqamini (ID) tanlang:", range(1, len(avanslar_list) + 1))
                         if st.button("Ushbu Avansni O'chirish"):
@@ -404,9 +393,7 @@ if st.session_state.role == "admin":
                             st.warning("Avans tarixi o'chirildi!")
                             st.rerun()
 
-                # ------------------------------------
                 # UMUMIY FINANS METRIKALARI
-                # ------------------------------------
                 st.write("---")
                 ishlar = house_info.get("ishlar", {})
                 avanslar_list = house_info.get("avanslar", [])
