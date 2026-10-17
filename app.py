@@ -38,11 +38,11 @@ DB_FILE = "qurilish_data.json"
 def load_data():
     if not os.path.exists(DB_FILE):
         initial_data = {
-            "admin": {"username": "abdullaprorap", "password": "123"},
+            "admin": {"username": "abdulla", "password": "0101"},
             "xonadonlar": {
                 "1-xonadon (Toshkent, Chilonzor)": {
-                    "usta_login": "usta1",
-                    "usta_password": "111",
+                    "usta_login": "usta",
+                    "usta_password": "1111",
                     "avanslar": [
                         {
                             "sana": "2026-10-17 14:30",
@@ -84,43 +84,43 @@ def save_data(data):
 # --- BARCHA ISHLAR KATALOGI ---
 DEFAULT_WORKS = [
     # Noldan qurish (Karkas)
-    ("Beton quyish", "m³", "Karkas"),
-    ("Padushka quyish", "m³", "Karkas"),
-    ("Rigel / Kolonna", "m³", "Karkas"),
-    ("Seysmopoyas (Sesma)", "m³", "Karkas"),
-    ("Peremichka", "m³", "Karkas"),
+    ("Beton quyish", "m", "Karkas"),
+    ("Padushka quyish", "m", "Karkas"),
+    ("Rigel / Kolonna", "m", "Karkas"),
+    ("Seysmopoyas (Sesma)", "m", "Karkas"),
+    ("Peremichka", "m", "Karkas"),
     ("Pishgan g'isht terish", "dona", "Karkas"),
     ("Plita o'rnatish", "dona", "Karkas"),
     ("Plita obvyazka", "m", "Karkas"),
     ("Seredeshnik", "m", "Karkas"),
-    ("Lumboz", "m²", "Karkas"),
-    ("Tom yevro (Krovlya)", "m²", "Karkas"),
+    ("Lumboz", "kv", "Karkas"),
+    ("Tom yevro (Krovlya)", "kv", "Karkas"),
     ("Slef o'rnatish", "m", "Karkas"),
-    ("Transheya kovlash", "m³", "Karkas"),
+    ("Transheya kovlash", "kv", "Karkas"),
     ("Gazoblok terish", "dona", "Karkas"),
     ("Shlakoblok terish", "dona", "Karkas"),
-    ("Styajka quyish", "m²", "Karkas"),
-    ("Monolit quyish", "m²", "Karkas"),
-    ("Tsement suvoq", "m²", "Karkas"),
+    ("Styajka quyish", "kv", "Karkas"),
+    ("Monolit quyish", "m", "Karkas"),
+    ("Tsement suvoq", "m", "Karkas"),
     
     # Ichki ta'mirlash
-    ("Rodband suvoq", "m²", "Ichki ta'mir"),
-    ("Shpaklyovka (Tyag/Glan)", "m²", "Ichki ta'mir"),
-    ("Laminat yotqizish", "m²", "Ichki ta'mir"),
+    ("Rodband suvoq", "kv", "Ichki ta'mir"),
+    ("Shpaklyovka (Tyag/Glan)", "kv", "Ichki ta'mir"),
+    ("Laminat yotqizish", "kv", "Ichki ta'mir"),
     ("Plintus o'rnatish", "m", "Ichki ta'mir"),
-    ("Gipsokarton montaj", "m²", "Ichki ta'mir"),
-    ("Emulsiya sepish/bo'yash", "m²", "Ichki ta'mir"),
-    ("Oboy yopishtirish", "m²", "Ichki ta'mir"),
-    ("PVX panel", "m²", "Ichki ta'mir"),
-    ("Bambuk panel", "m²", "Ichki ta'mir"),
+    ("Gipsokarton montaj", "kv", "Ichki ta'mir"),
+    ("Emulsiya sepish/bo'yash", "kv", "Ichki ta'mir"),
+    ("Oboy yopishtirish", "kv", "Ichki ta'mir"),
+    ("PVX panel", "kv", "Ichki ta'mir"),
+    ("Bambuk panel", "kv", "Ichki ta'mir"),
     ("Akfa eshik/rom o'rnatish", "dona", "Ichki ta'mir"),
     ("Santexnika ishlari", "tochka", "Ichki ta'mir"),
     ("Elektrika ishlari", "tochka", "Ichki ta'mir"),
     ("Lepka yopishtirish", "m", "Ichki ta'mir"),
     ("Rels/Parniz o'rnatish", "m", "Ichki ta'mir"),
-    ("Kafel/Kafelmangal", "m²", "Ichki ta'mir"),
-    ("Tyoply pol yotqizish", "m²", "Ichki ta'mir"),
-    ("Malyarka ishlari", "m²", "Ichki ta'mir"),
+    ("Kafel/Kafelmangal", "kv", "Ichki ta'mir"),
+    ("Tyoply pol yotqizish", "kv", "Ichki ta'mir"),
+    ("Malyarka ishlari", "kv", "Ichki ta'mir"),
     ("Eshik o'rnatish (Yog'och/MDX)", "dona", "Ichki ta'mir")
 ]
 
