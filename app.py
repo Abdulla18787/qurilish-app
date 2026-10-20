@@ -95,8 +95,8 @@ DEFAULT_WORKS = [
     ("Shlakoblok terish", "dona", "Karkas"),
     ("Styajka quyish", "m²", "Karkas"),
     ("Monolit quyish", "m²", "Karkas"),
-    ("Sement suvoq", "m²", "Karkas"),
-    ("Sement suvoq atkoz", "m", "Karkas"),
+    ("Sement suvoq", "m²", "Pad Jelka"),
+    ("Sement suvoq atkoz", "m", "Lazerda"),
     
     # Ichki ta'mirlash
     ("Rodband suvoq", "m²", "Ichki ta'mir"),
