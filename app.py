@@ -13,7 +13,27 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- GOOGLE SHEETS ULANIŞH ---
+# --- DIZAYN (CUSTOM CSS) ---
+st.markdown("""
+    <style>
+    .main {
+        background-color: #f8f9fa;
+    }
+    .stButton>button {
+        width: 100%;
+        border-radius: 8px;
+        height: 3em;
+        background-color: #007bff;
+        color: white;
+        font-weight: bold;
+    }
+    .stButton>button:hover {
+        background-color: #0056b3;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+# --- GOOGLE SHEETS ULANISHI ---
 SCOPE = [
     "https://www.googleapis.com/auth/spreadsheets",
     "https://www.googleapis.com/auth/drive"
@@ -21,8 +41,12 @@ SCOPE = [
 
 @st.cache_resource
 def get_gspread_client():
+    creds_dict = dict(st.secrets["gcp_service_account"])
+    if "private_key" in creds_dict:
+        creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
+        
     credentials = Credentials.from_service_account_info(
-        st.secrets["gcp_service_account"],
+        creds_dict,
         scopes=SCOPE
     )
     return gspread.authorize(credentials)
@@ -71,6 +95,7 @@ def save_data(data):
 
 # --- BARCHA ISHLAR KATALOGI ---
 DEFAULT_WORKS = [
+    # Noldan qurish (Karkas)
     ("Beton quyish", "m³", "Karkas"),
     ("Padushka quyish", "m³", "Karkas"),
     ("Rigel / Kolonna", "m³", "Karkas"),
@@ -90,6 +115,7 @@ DEFAULT_WORKS = [
     ("Monolit quyish", "m²", "Karkas"),
     ("Tsement suvoq", "m²", "Karkas"),
     
+    # Ichki ta'mirlash
     ("Rodband suvoq", "m²", "Ichki ta'mir"),
     ("Shpaklyovka (Tyag/Glan)", "m²", "Ichki ta'mir"),
     ("Laminat yotqizish", "m²", "Ichki ta'mir"),
@@ -240,6 +266,7 @@ if st.session_state.role == "usta":
     m1.metric("💰 Umumiy Bajarilgan Ishlar", f"{total_ish_sum:,.0f} so'm")
     m2.metric("💵 Barcha Berilgan Avanslar", f"{total_avans_sum:,.0f} so'm")
     m3.metric("⚖️ Qolgan Qarzdorlik", f"{qolgan_summa:,.0f} so'm")
+
 
 # ==========================================
 # 3. PRORAB ABDULLA (ADMIN PANELI)
