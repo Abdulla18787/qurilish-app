@@ -1,8 +1,9 @@
 import streamlit as st
 import pandas as pd
 import json
-import os
 from datetime import datetime
+import gspread
+from google.oauth2.service_account import Credentials
 
 # --- SAHIFA SOZLAMALARI ---
 st.set_page_config(
@@ -12,72 +13,64 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- DIZAYN (CUSTOM CSS) ---
-st.markdown("""
-    <style>
-    .main {
-        background-color: #f8f9fa;
-    }
-    .stButton>button {
-        width: 100%;
-        border-radius: 8px;
-        height: 3em;
-        background-color: #007bff;
-        color: white;
-        font-weight: bold;
-    }
-    .stButton>button:hover {
-        background-color: #0056b3;
-    }
-    </style>
-""", unsafe_allow_html=True)
+# --- GOOGLE SHEETS ULANIŞH ---
+SCOPE = [
+    "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/drive"
+]
 
-# --- MA'LUMOTLAR BAZASI (JSON FAYL) ---
-DB_FILE = "qurilish_data.json"
+@st.cache_resource
+def get_gspread_client():
+    credentials = Credentials.from_service_account_info(
+        st.secrets["gcp_service_account"],
+        scopes=SCOPE
+    )
+    return gspread.authorize(credentials)
 
 def load_data():
-    default_admin = {"username": "abdulla", "password": "0101"}
-    
-    if not os.path.exists(DB_FILE):
-        initial_data = {
-            "admin": default_admin,
-            "xonadonlar": {
-                "1-xonadon (Toshkent, Chilonzor)": {
-                    "usta_login": "usta",
-                    "usta_password": "1111",
-                    "avanslar": [],  # Boshlanishida avanslar 0
-                    "ishlar": {
-                        "Beton quyish": {"mintaqa": "Karkas", "birlik": "m³", "hajm": 15.0, "narx": 15000}
-                    }
+    try:
+        gc = get_gspread_client()
+        sh = gc.open_by_key(st.secrets["SPREADSHEET_ID"])
+        worksheet = sh.sheet1
+        
+        cell_value = worksheet.acell('A1').value
+        if cell_value:
+            data = json.loads(cell_value)
+        else:
+            data = {}
+    except Exception as e:
+        data = {}
+
+    default_admin = {"username": "abdullaprorap", "password": "123"}
+    data["admin"] = default_admin
+
+    if "xonadonlar" not in data:
+        data["xonadonlar"] = {
+            "1-xonadon (Toshkent, Chilonzor)": {
+                "usta_login": "usta1",
+                "usta_password": "111",
+                "avanslar": [],
+                "ishlar": {
+                    "Beton quyish": {"mintaqa": "Karkas", "birlik": "m³", "hajm": 15.0, "narx": 15000}
                 }
             }
         }
-        with open(DB_FILE, "w", encoding="utf-8") as f:
-            json.dump(initial_data, f, ensure_ascii=False, indent=4)
-        return initial_data
-    
-    with open(DB_FILE, "r", encoding="utf-8") as f:
-        data = json.load(f)
-        
-    # Koddagi admin va parolni doim ustun qo'yish
-    data["admin"] = default_admin
-    
-    # Eski strukturani yangilash
-    for h_name, h_info in data.get("xonadonlar", {}).items():
-        if "avanslar" not in h_info:
-            h_info["avanslar"] = []
-        if "avans" in h_info:
-            del h_info["avans"]
-                
+        save_data(data)
+
     return data
 
 def save_data(data):
-    with open(DB_FILE, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=4)
+    try:
+        gc = get_gspread_client()
+        sh = gc.open_by_key(st.secrets["SPREADSHEET_ID"])
+        worksheet = sh.sheet1
+        json_string = json.dumps(data, ensure_ascii=False)
+        worksheet.update_acell('A1', json_string)
+    except Exception as e:
+        st.error(f"Google Sheets'ga saqlashda xatolik: {e}")
 
 # --- BARCHA ISHLAR KATALOGI ---
 DEFAULT_WORKS = [
-    # Noldan qurish (Karkas)
     ("Beton quyish", "m³", "Karkas"),
     ("Padushka quyish", "m³", "Karkas"),
     ("Rigel / Kolonna", "m³", "Karkas"),
@@ -95,10 +88,8 @@ DEFAULT_WORKS = [
     ("Shlakoblok terish", "dona", "Karkas"),
     ("Styajka quyish", "m²", "Karkas"),
     ("Monolit quyish", "m²", "Karkas"),
-    ("Sement suvoq", "m²", "Pad Jelka"),
-    ("Sement suvoq atkoz", "m", "Lazerda"),
+    ("Tsement suvoq", "m²", "Karkas"),
     
-    # Ichki ta'mirlash
     ("Rodband suvoq", "m²", "Ichki ta'mir"),
     ("Shpaklyovka (Tyag/Glan)", "m²", "Ichki ta'mir"),
     ("Laminat yotqizish", "m²", "Ichki ta'mir"),
@@ -250,7 +241,6 @@ if st.session_state.role == "usta":
     m2.metric("💵 Barcha Berilgan Avanslar", f"{total_avans_sum:,.0f} so'm")
     m3.metric("⚖️ Qolgan Qarzdorlik", f"{qolgan_summa:,.0f} so'm")
 
-
 # ==========================================
 # 3. PRORAB ABDULLA (ADMIN PANELI)
 # ==========================================
@@ -270,7 +260,6 @@ if st.session_state.role == "admin":
             if selected_house:
                 house_info = db_data["xonadonlar"][selected_house]
                 
-                # Usta Login
                 with st.expander("🔑 Usta Kirish Ma'lumotlari (Tahrirlash)", expanded=False):
                     c1, c2 = st.columns(2)
                     new_u_login = c1.text_input("Usta Logini", value=house_info.get("usta_login", ""))
@@ -285,7 +274,6 @@ if st.session_state.role == "admin":
                 
                 sub_tab1, sub_tab2 = st.tabs(["🛠️ Ishlar va Smeta", "💵 Avanslar Boshqaruvi"])
                 
-                # ISHLAR SMETASI
                 with sub_tab1:
                     with st.form("add_work_form"):
                         st.write("**➕ Yangi Ish va Hajm Kirish**")
@@ -317,7 +305,6 @@ if st.session_state.role == "admin":
                             else:
                                 st.error("Hajm va Narx 0 dan katta bo'lishi kerak!")
 
-                    # JADVALNI KO'RSATISH
                     ishlar = house_info.get("ishlar", {})
                     if ishlar:
                         st.write("### 📋 Joriy Smeta Jadvali")
@@ -344,7 +331,6 @@ if st.session_state.role == "admin":
                             st.warning(f"'{del_work}' smetadan o'chirildi!")
                             st.rerun()
 
-                # AVANSLAR BOSHQARUVI
                 with sub_tab2:
                     st.write("### ➕ Yangi Avans / To'lov Berish")
                     with st.form("add_avans_form"):
@@ -394,7 +380,6 @@ if st.session_state.role == "admin":
                             st.warning("Avans tarixi o'chirildi!")
                             st.rerun()
 
-                # UMUMIY FINANS METRIKALARI
                 st.write("---")
                 ishlar = house_info.get("ishlar", {})
                 avanslar_list = house_info.get("avanslar", [])
@@ -408,7 +393,6 @@ if st.session_state.role == "admin":
                 m2.metric("💵 Jami Berilgan Avanslar", f"{tot_avans:,.0f} so'm")
                 m3.metric("⚖️ Qolgan Qarzdorlik (Uy egasi berishi kerak)", f"{qolgan_qarz:,.0f} so'm")
 
-                # XONADONNI O'CHIRISH
                 st.write("---")
                 with st.expander("⚠️ Obyektni (Xonadonni) butunlay o'chirish"):
                     st.error("Diqqat! Bu xonadonga tegishli barcha ma'lumotlar, avanslar tarixi va usta logini o'chib ketadi.")
@@ -418,7 +402,6 @@ if st.session_state.role == "admin":
                         st.success("Xonadon muvaffaqiyatli o'chirildi!")
                         st.rerun()
 
-    # TAB 2: YANGI XONADON QO'SHISH
     with tab2:
         st.subheader("➕ Yangi Xonadon (Obyekt) va Usta Kirishini Yaratish")
         
