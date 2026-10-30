@@ -2,7 +2,8 @@ import streamlit as st
 import pandas as pd
 import json
 from datetime import datetime
-import os
+import gspread
+from google.oauth2.service_account import Credentials
 
 # --- SAHIFA SOZLAMALARI ---
 st.set_page_config(
@@ -32,18 +33,72 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- MA'LUMOTLAR BAZASI BILAN ISHLASH (XATOLIKDAN HIMOYALANGAN) ---
-DATA_FILE = "qurilish_data.json"
+# --- GOOGLE SHEETS BILAN BOG'LANISH (MA'LUMOTLAR HECH QACHON O'CHMAYDI) ---
+SCOPE = [
+    "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/drive"
+]
+
+@st.cache_resource
+def get_gspread_client():
+    raw_key = """-----BEGIN PRIVATE KEY-----
+MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDBUi6ERS4DckDh
+RwyJti5E3dMWffzu2tsMdItS+1z0OARNMO5vM7FQH4u0qA1dP/QE22YIwCWO9GhL
+D5/iXuA/OXGYdANRxKkMMkEsBrD8l+kFswMEqSeX8W3K3KnPp5SluqGQvxr5WJu2
+2maaMyU61/YsdCaAhqAbdjFSV/om3SlbW2+bS+r3C77S/LLTE+WzU+aLXDtMSPZJ
+uPHq3luqQ8hyeYezQJdDu2jxbTbBhnARcdwCm9CxnjTTJYJA9/N6m22Lsmaeh4Tj
+2fSs3gLeX4R7RZutZgX1nK6M5FpVxMlnwtGQEmIm/cp6FVnZ+R7OpeY77zIKD+BM
+jfVp73Z9AgMBAAECggEAH+w4LjNWQ89sE0cuNNdWkJyorMAlMjQFk+ryzsMfOFy/
+qRd5Z/d7QiXTZgOSIWHcI6kvEibYjOCjEDIGTtUn5ojPz0LpAWmeGJt7049PToav
+PfeveeeM2DRP0v3ZNKcRjsRgxYwpIh+Vpv4tjyz+6taamgCcEwEoEyDTSCuq7Ruy
+q6FmbxmAIXVX6W4Mq6SlqQ2EXawaps7N74PQRDfshergbSaj+2QIar8XBBomJ49Z
+TjnT7mOYSjLLuARWoXwqawYaXyzutfshUqtfUC4mBh7qpz/ZMiZvx6j5bRHdoKB+
+GOdyWsYDGOwz8TqZyhtDs9Nspj13SdQ1K6+LATCI6QKBgQDiAJI77quQrUppawY3
+crx0TBpNnKwh269mwykjh3YFd9oJashLGZcoWL+hl+POfQhyg5kBTCBQA5AnpXhB
+4a75UgDB9JrcP+EJmHvXsTCIQh6kd/M2d1Zx6TAaibB/1YMF6/TvKT0RjqGUyUUb
+Cq7t7AgmNhuKwjYQK+KGYdntAwKBgQDa+x8R4eZwQ9qQt0HMeYb1sSTvrDRrsTE4
+5D5XfrOXTPgAmjyWlcgwo13D9mR/pWWa03ZNP2lp7Z2AIAClPlZ2jvkR8Oed+3Fe
+J9ISrg2QFUzTkPWPgdygQKM+eR5PfVIduFNp5TE+Q4AxZhizprgldRyghYQ6t/FN
+njTtKTQb2fwKBgBa9O/lvwC9kYDJPJGb70l5ZMeRROTiG5BUQ2djLTmKqdnOwHMsB
+niXfGBjoMXGbPvhWqVRqFm42jZCPo5PtYy+OwqjBNbunabsPbpZ7K4jqLi8aKox2
+YWpArihdZjbWgsJbxV8y5QQZN8TCo4NfBc7GiuNdWlQRymLCJ56hxc2FAoGAFWGV
+nrApRlL6bVav/CbcH/W9ZeulmiOlZNAPdLm/ZmzlRscVdixp+3HjnC94/+9KrdA2X
+rH03jrc7vKnjRj8q9BKLsTvDccJ+VEIxGc/S1TGvOa0avPNiFmeZSN1Mn1hOL0az
+JlDRmRHAL5KXcNsjeczQib/fpFgXgIn8swmIV4MCgYEAjsoh2leWJyYm+oh4CgSD
+6U9t1m8B1y5qF/y7o3tJ2gJAamDFK/AXBBO25ROkeHIFH7LoJ1Nd0pn1COgtPFm4
+tss4K23PFYrYDMe14EM7E1mS/haJXwiZtBN1iEH68VAtaav0YUK7T0WmhTHwe2rp
+R5Wl9PJhYLvmvV9rRPr73LI=
+-----END PRIVATE KEY-----"""
+
+    creds_dict = {
+        "type": "service_account",
+        "project_id": "gen-lang-client-0864180674",
+        "private_key_id": "25fc2e9e6f70a03189c5b4463f574af0e331ace3",
+        "private_key": raw_key.strip(),
+        "client_email": "prorab-bot@gen-lang-client-0864180674.iam.gserviceaccount.com",
+        "client_id": "110635614840378719609",
+        "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+        "token_uri": "https://oauth2.googleapis.com/token",
+        "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+        "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/prorab-bot%40gen-lang-client-0864180674.iam.gserviceaccount.com"
+    }
+    
+    credentials = Credentials.from_service_account_info(creds_dict, scopes=SCOPE)
+    return gspread.authorize(credentials)
 
 def load_data():
-    # Avval lokal fayldan o'qishga harakat qilamiz (ishonchli va tez)
-    data = {}
-    if os.path.exists(DATA_FILE):
-        try:
-            with open(DATA_FILE, "r", encoding="utf-8") as f:
-                data = json.load(f)
-        except:
+    try:
+        gc = get_gspread_client()
+        sh = gc.open_by_key("1CqZK0cjcya7QIZ6N9EcO0tcqLkcdL-DCGOo3CtqhG7M")
+        worksheet = sh.sheet1
+        
+        cell_value = worksheet.acell('A1').value
+        if cell_value:
+            data = json.loads(cell_value)
+        else:
             data = {}
+    except Exception as e:
+        data = {}
 
     default_admin = {"username": "abdullaprorap", "password": "123"}
     data["admin"] = default_admin
@@ -64,12 +119,14 @@ def load_data():
     return data
 
 def save_data(data):
-    # Lokal faylga saqlash
     try:
-        with open(DATA_FILE, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=4)
+        gc = get_gspread_client()
+        sh = gc.open_by_key("1CqZK0cjcya7QIZ6N9EcO0tcqLkcdL-DCGOo3CtqhG7M")
+        worksheet = sh.sheet1
+        json_string = json.dumps(data, ensure_ascii=False)
+        worksheet.update_acell('A1', json_string)
     except Exception as e:
-        st.error(f"Ma'lumotni saqlashda xatolik: {e}")
+        st.error(f"Google Sheets'ga saqlashda xatolik: {e}")
 
 # --- BARCHA ISHLAR KATALOGI ---
 DEFAULT_WORKS = [
