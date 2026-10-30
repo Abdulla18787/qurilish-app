@@ -33,7 +33,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- GOOGLE SHEETS ULANISHI (TO'G'RIDAN-TO'G'RI KOD ORQALI) ---
+# --- GOOGLE SHEETS ULANISHI ---
 SCOPE = [
     "https://www.googleapis.com/auth/spreadsheets",
     "https://www.googleapis.com/auth/drive"
@@ -41,12 +41,40 @@ SCOPE = [
 
 @st.cache_resource
 def get_gspread_client():
-    # Kalitni to'g'ridan-to'g'ri lug'at ko'rinishida beramiz (xatolik chiqishiga o'rin qolmaydi)
+    raw_key = """-----BEGIN PRIVATE KEY-----
+MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDBUi6ERS4DckDh
+RwyJti5E3dMWffzu2tsMdItS+1z0OARNMO5vM7FQH4u0qA1dP/QE22YIwCWO9GhL
+D5/iXuA/OXGYdANRxKkMMkEsBrD8l+kFswMEqSeX8W3K3KnPp5SluqGQvxr5WJu2
+2maaMyU61/YsdCaAhqAbdjFSV/om3SlbW2+bS+r3C77S/LLTE+WzU+aLXDtMSPZJ
+uPHq3luqQ8hyeYezQJdDu2jxbTbBhnARcdwCm9CxnjTTJYJA9/N6m22Lsmaeh4Tj
+2fSs3gLeX4R7RZutZgX1nK6M5FpVxMlnwtGQEmIm/cp6FVnZ+R7OpeY77zIKD+BM
+jfVp73Z9AgMBAAECggEAH+w4LjNWQ89sE0cuNNdWkJyorMAlMjQFk+ryzsMfOFy/
+qRd5Z/d7QiXTZgOSIWHcI6kvEibYjOCjEDIGTtUn5ojPz0LpAWmeGJt7049PToav
+PfeveeeM2DRP0v3ZNKcRjsRgxYwpIh+Vpv4tjyz+6taamgCcEwEoEyDTSCuq7Ruy
+q6FmbxmAIXVX6W4Mq6SlqQ2EXawaps7N74PQRDfshergbSaj+2QIar8XBBomJ49Z
+TjnT7mOYSjLLuARWoXwqawYaXyzutfshUqtfUC4mBh7qpz/ZMiZvx6j5bRHdoKB+
+GOdyWsYDGOwz8TqZyhtDs9Nspj13SdQ1K6+LATCI6QKBgQDiAJI77quQrUppawY3
+crx0TBpNnKwh269mwykjh3YFd9oJashLGZcoWL+hl+POfQhyg5kBTCBQA5AnpXhB
+4a75UgDB9JrcP+EJmHvXsTCIQh6kd/M2d1Zx6TAaibB/1YMF6/TvKT0RjqGUyUUb
+Cq7t7AgmNhuKwjYQK+KGYdntAwKBgQDa+x8R4eZwQ9qQt0HMeYb1sSTvrDRrsTE4
+5D5XfrOXTPgAmjyWlcgwo13D9mR/pWWa03ZNP2lp7Z2AIAClPlZ2jvkR8Oed+3Fe
+J9ISrg2QFUzTkPWPgdygQKM+eR5PfVIduFNp5TE+Q4AxZhizprgldRyghYQ6t/FN
+njTtKTQb2fwKBgBa9O/lvwC9kYDJPJGb70l5ZMeRROTiG5BUQ2djLTmKqdnOwHMsB
+niXfGBjoMXGbPvhWqVRqFm42jZCPo5PtYy+OwqjBNbunabsPbpZ7K4jqLi8aKox2
+YWpArihdZjbWgsJbxV8y5QQZN8TCo4NfBc7GiuNdWlQRymLCJ56hxc2FAoGAFWGV
+nrApRlL6bVav/CbcH/W9ZeulmiOlZNAPdLm/ZmzlRscVdixp+3HjnC94/+9KrdA2X
+rH03jrc7vKnjRj8q9BKLsTvDccJ+VEIxGc/S1TGvOa0avPNiFmeZSN1Mn1hOL0az
+JlDRmRHAL5KXcNsjeczQib/fpFgXgIn8swmIV4MCgYEAjsoh2leWJyYm+oh4CgSD
+6U9t1m8B1y5qF/y7o3tJ2gJAamDFK/AXBBO25ROkeHIFH7LoJ1Nd0pn1COgtPFm4
+tss4K23PFYrYDMe14EM7E1mS/haJXwiZtBN1iEH68VAtaav0YUK7T0WmhTHwe2rp
+R5Wl9PJhYLvmvV9rRPr73LI=
+-----END PRIVATE KEY-----"""
+
     creds_dict = {
         "type": "service_account",
         "project_id": "gen-lang-client-0864180674",
         "private_key_id": "25fc2e9e6f70a03189c5b4463f574af0e331ace3",
-        "private_key": """-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDBUi6ERS4DckDh\nRwyJti5E3dMWffzu2tsMdItS+1z0OARNMO5vM7FQH4u0qA1dP/QE22YIwCWO9GhL\nD5/iXuA/OXGYdANRxKkMMkEsBrD8l+kFswMEqSeX8W3K3KnPp5SluqGQvxr5WJu2\n2maaMyU61/YsdCaAhqAbdjFSV/om3SlbW2+bS+r3C77S/LLTE+WzU+aLXDtMSPZJ\nuPHq3luqQ8hyeYezQJdDu2jxbTbBhnARcdwCm9CxnjTTJYJA9/N6m22Lsmaeh4Tj\n2fSs3gLeX4R7RZutZgX1nK6M5FpVxMlnwtGQEmIm/cp6FVnZ+R7OpeY77zIKD+BM\njfVp73Z9AgMBAAECggEAH+w4LjNWQ89sE0cuNNdWkJyorMAlMjQFk+ryzsMfOFy/\nqRd5Z/d7QiXTZgOSIWHcI6kvEibYjOCjEDIGTtUn5ojPz0LpAWmeGJt7049PToav\nPfeveeeM2DRP0v3ZNKcRjsRgxYwpIh+Vpv4tjyz+6taamgCcEwEoEyDTSCuq7Ruy\nq6FmbxmAIXVX6W4Mq6SlqQ2EXawaps7N74PQRDfshergbSaj+2QIar8XBBomJ49Z\nTjnT7mOYSjLLuARWoXwqawYaXyzutfshUqtfUC4mBh7qpz/ZMiZvx6j5bRHdoKB+\nGOdyWsYDGOwz8TqZyhtDs9Nspj13SdQ1K6+LATCI6QKBgQDiAJI77quQrUppawY3\ncrx0TBpNnKwh269mwykjh3YFd9oJashLGZcoWL+hl+POfQhyg5kBTCBQA5AnpXhB\n4a75UgDB9JrcP+EJmHvXsTCIQh6kd/M2d1Zx6TAaibB/1YMF6/TvKT0RjqGUyUUb\nCq7t7AgmNhuKwjYQK+KGYdntAwKBgQDa+x8R4eZwQ9qQt0HMeYb1sSTvrDRrsTE4\n5D5XfrOXTPgAmjyWlcgwo13D9mR/pWWa03ZNP2lp7Z2AIAClPlZ2jvkR8Oed+3Fe\nJ9ISrg2QFUzTkPWPgdygQKM+eR5PfVIduFNp5TE+Q4AxZhizprgldRyghYQ6t/FN\nnjTtKTQb2fwKBgBa9O/lvwC9kYDJPJGb70l5ZMeRROTiG5BUQ2djLTmKqdnOwHMsB\nniXfGBjoMXGbPvhWqVRqFm42jZCPo5PtYy+OwqjBNbunabsPbpZ7K4jqLi8aKox2\nYWpArihdZjbWgsJbxV8y5QQZN8TCo4NfBc7GiuNdWlQRymLCJ56hxc2FAoGAFWGV\nrApRlL6bVav/CbcH/W9ZeulmiOlZNAPdLm/ZmzlRscVdixp+3HjnC94/+9KrdA2X\nrH03jrc7vKnjRj8q9BKLsTvDccJ+VEIxGc/S1TGvOa0avPNiFmeZSN1Mn1hOL0az\nJlDRmRHAL5KXcNsjeczQib/fpFgXgIn8swmIV4MCgYEAjsoh2leWJyYm+oh4CgSD\n6U9t1m8B1y5qF/y7o3tJ2gJAamDFK/AXBBO25ROkeHIFH7LoJ1Nd0pn1COgtPFm4\ntss4K23PFYrYDMe14EM7E1mS/haJXwiZtBN1iEH68VAtaav0YUK7T0WmhTHwe2rp\nR5Wl9PJhYLvmvV9rRPr73LI=\n-----END PRIVATE KEY-----""",
+        "private_key": raw_key.strip(),
         "client_email": "prorab-bot@gen-lang-client-0864180674.iam.gserviceaccount.com",
         "client_id": "110635614840378719609",
         "auth_uri": "https://accounts.google.com/o/oauth2/auth",
@@ -102,6 +130,7 @@ def save_data(data):
 
 # --- BARCHA ISHLAR KATALOGI ---
 DEFAULT_WORKS = [
+    # Noldan qurish (Karkas)
     ("Beton quyish", "m³", "Karkas"),
     ("Padushka quyish", "m³", "Karkas"),
     ("Rigel / Kolonna", "m³", "Karkas"),
@@ -120,6 +149,8 @@ DEFAULT_WORKS = [
     ("Styajka quyish", "m²", "Karkas"),
     ("Monolit quyish", "m²", "Karkas"),
     ("Tsement suvoq", "m²", "Karkas"),
+    
+    # Ichki ta'mirlash
     ("Rodband suvoq", "m²", "Ichki ta'mir"),
     ("Shpaklyovka (Tyag/Glan)", "m²", "Ichki ta'mir"),
     ("Laminat yotqizish", "m²", "Ichki ta'mir"),
@@ -436,10 +467,10 @@ if st.session_state.role == "admin":
     with tab2:
         st.subheader("➕ Yangi Xonadon (Obyekt) va Usta Kirishini Yaratish")
         
-        with st.form("add_house_form"):
+        with st.form("add_house_form_new"):
             h_name = st.text_input("Xonadon Nomi yoki Unikal Manzili (Masalan: 51-xonadon Yunusobod)")
             u_login = st.text_input("Ushbu xonadon ustasi uchun Login")
-            u_pass = st.text_input("Ushbu xonadon ustasi uchun Parol")
+            u_pass = st.text_input("Ushbu xonadon ustasi uchun Parol", type="password")
             
             submit_house = st.form_submit_button("Xonadonni Tizimga Qo'shish")
             
