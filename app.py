@@ -177,7 +177,11 @@ def money(value):
 
 def get_projects():
     with db() as conn:
-        return conn.execute("SELECT * FROM projects ORDER BY id DESC").fetchall()
+        rows = conn.execute(
+            "SELECT * FROM projects ORDER BY id DESC"
+        ).fetchall()
+
+        return [dict(row) for row in rows]
 
 def get_project_totals(project_id):
     with db() as conn:
