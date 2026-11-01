@@ -1,4 +1,2 @@
-streamlit
-pandas
-gspread
-google-auth
+streamlit>=1.36
+pandas>=2.0
